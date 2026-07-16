@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mlops"
+version = "0.0.1"
+description = "Internal MLOps framework combining DVC + MLflow on an Azure ML backend"
+requires-python = ">=3.10"
+dependencies = [
+    "mlflow",
+    "azureml-mlflow",
+    "azure-ai-ml",
+    "azure-identity",
+    "dvc[azure]",
+    "typer",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+mlops = "mlops.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mlops"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
