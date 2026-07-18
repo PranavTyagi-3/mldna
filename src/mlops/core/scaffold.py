@@ -1,10 +1,10 @@
 import subprocess
-import sys
 from pathlib import Path
 
 import yaml
 
 from mlops import __version__
+from mlops.core import dvc
 
 GITIGNORE = "models/\noutputs/\n.mlops/\nmlruns/\n.dvc/cache/\n"
 
@@ -16,10 +16,6 @@ def _write_if_absent(path, content):
         return False
     path.write_text(content)
     return True
-
-
-def _dvc(args, cwd):
-    subprocess.run([sys.executable, "-m", "dvc", *args], cwd=cwd, check=True, capture_output=True)
 
 
 def scaffold_producer(project_dir, model_name):
@@ -50,7 +46,7 @@ def scaffold_producer(project_dir, model_name):
         created.append(str(project_dir / ".git"))
 
     if not (project_dir / ".dvc").exists():
-        _dvc(["init", "-q"], cwd=project_dir)
+        dvc.run(["init", "-q"], cwd=project_dir)
         created.append(str(project_dir / ".dvc"))
 
     dataset_dir = project_dir / "dataset"
@@ -58,7 +54,7 @@ def scaffold_producer(project_dir, model_name):
         (dataset_dir / ".gitkeep").write_text("")
 
     if not (project_dir / "dataset.dvc").exists():
-        _dvc(["add", "dataset", "-q"], cwd=project_dir)
+        dvc.run(["add", "dataset", "-q"], cwd=project_dir)
         created.append(str(project_dir / "dataset.dvc"))
 
     return created

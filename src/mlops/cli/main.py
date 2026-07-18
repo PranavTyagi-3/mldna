@@ -1,6 +1,7 @@
 import typer
 
 from mlops import __version__
+from mlops.core.push import PushError, push as core_push
 from mlops.core.scaffold import scaffold_producer
 
 app = typer.Typer(
@@ -35,6 +36,28 @@ def init(
     for path in created:
         typer.echo(f"created {path}")
     typer.echo(f"Initialized producer project '{model_name}'.")
+
+
+@app.command()
+def push(
+    message: str = typer.Option(None, "--message", "-m", help="Commit message"),
+    dir: str = typer.Option(".", "--dir", help="Target project directory"),
+) -> None:
+    """Sync code and data: dvc add, git commit, dvc push, git push."""
+    if message is None:
+        message = typer.prompt("Commit message")
+
+    try:
+        result = core_push(dir, message=message)
+    except PushError as e:
+        typer.echo(f"push failed: {e}", err=True)
+        raise typer.Exit(1)
+
+    if result["committed"]:
+        typer.echo(f"Committed: {message}")
+    else:
+        typer.echo("Nothing to commit.")
+    typer.echo("Pushed.")
 
 
 if __name__ == "__main__":
