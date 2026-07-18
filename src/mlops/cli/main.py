@@ -1,6 +1,7 @@
 import typer
 
 from mlops import __version__
+from mlops.core.scaffold import scaffold_producer
 
 app = typer.Typer(
     name="mlops",
@@ -22,6 +23,18 @@ def main(
     ),
 ) -> None:
     pass
+
+
+@app.command()
+def init(
+    model_name: str,
+    dir: str = typer.Option(".", "--dir", help="Target project directory"),
+) -> None:
+    """Scaffold a producer project."""
+    created = scaffold_producer(dir, model_name)
+    for path in created:
+        typer.echo(f"created {path}")
+    typer.echo(f"Initialized producer project '{model_name}'.")
 
 
 if __name__ == "__main__":
