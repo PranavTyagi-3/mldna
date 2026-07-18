@@ -23,14 +23,6 @@ dependencies = [
     "typer",
     "pyyaml",
     "psutil",
-    "numpy",
-    # onnxruntime>=1.21 has a native-extension DLL conflict with pyarrow (an
-    # mlflow dependency) on Windows: importing pyarrow before onnxruntime makes
-    # onnxruntime's pybind extension fail to load ("DLL load failed while
-    # importing onnxruntime_pybind11_state"). Since mlflow is always imported
-    # first in this package, that's every real run. 1.20.1 doesn't hit it -
-    # confirmed empirically, see DECISIONS.md D#23.
-    "onnxruntime==1.20.1",
     # azureml-mlflow's plugin registration uses pkg_resources (old-style entry
     # points), which setuptools>=81 no longer bundles by default. Without this
     # pin, mlflow.set_tracking_uri("azureml://...") fails to resolve the scheme.
@@ -40,11 +32,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "scikit-learn",
-    # Only for hand-building test ONNX models (onnx.helper/onnx.checker) -
-    # skl2onnx was tried first but segfaults on import in this test suite,
-    # see DECISIONS.md D#23.
-    "onnx",
 ]
 
 [project.scripts]

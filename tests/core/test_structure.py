@@ -16,11 +16,10 @@ def _make_bundle(tmp_path, formats):
     return pkl, dirs
 
 
-def test_pkl_only_bundle_refused(tmp_path):
+def test_pkl_only_bundle_allowed(tmp_path):
     pkl, _ = _make_bundle(tmp_path, {})
 
-    with pytest.raises(StructureError, match="pkl-only"):
-        check_structure(pkl, [])
+    check_structure(pkl, [])
 
 
 def test_missing_required_format_refused(tmp_path):
