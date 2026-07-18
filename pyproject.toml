@@ -22,6 +22,7 @@ dependencies = [
     "dvc[azure]",
     "typer",
     "pyyaml",
+    "psutil",
     # azureml-mlflow's plugin registration uses pkg_resources (old-style entry
     # points), which setuptools>=81 no longer bundles by default. Without this
     # pin, mlflow.set_tracking_uri("azureml://...") fails to resolve the scheme.
