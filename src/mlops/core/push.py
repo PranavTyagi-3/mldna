@@ -37,7 +37,12 @@ def push(workspace_dir, message="mlops push"):
               "dvc push failed - is a remote configured? run `dvc remote add -d <name> <url>`")
 
     branch = git.get_branch(workspace_dir)
-    _run_git(["push", "origin", branch], workspace_dir,
-              "git push failed - is a remote configured? run `git remote add origin <url>`")
+    try:
+        git.push_branch(workspace_dir, branch)
+    except subprocess.CalledProcessError as e:
+        raise PushError(
+            f"git push failed - is a remote configured? run `git remote add origin <url>`: "
+            f"{e.stderr.strip()}"
+        )
 
     return {"committed": committed}
