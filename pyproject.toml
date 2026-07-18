@@ -8,13 +8,24 @@ version = "0.0.1"
 description = "Internal MLOps framework combining DVC + MLflow on an Azure ML backend"
 requires-python = ">=3.10"
 dependencies = [
-    "mlflow",
-    "azureml-mlflow",
+    # mlflow 3.x's register_model() calls a "Logged Models" search endpoint that
+    # Azure ML's MLflow-compatible tracking server does not implement (404) —
+    # verified via spikes/02_register_folder_model.py. Pin to the 2.x line, which
+    # registers folder bundles the old way and works against AML today.
+    "mlflow<3",
+    # Unpinned pip resolved azureml-mlflow down to 1.36.0 (2022-era, incompatible
+    # artifact-repo builder signature). 1.62.0.post5 is the latest available and
+    # is what spikes 01-03 were verified against.
+    "azureml-mlflow>=1.62",
     "azure-ai-ml",
     "azure-identity",
     "dvc[azure]",
     "typer",
     "pyyaml",
+    # azureml-mlflow's plugin registration uses pkg_resources (old-style entry
+    # points), which setuptools>=81 no longer bundles by default. Without this
+    # pin, mlflow.set_tracking_uri("azureml://...") fails to resolve the scheme.
+    "setuptools<81",
 ]
 
 [project.optional-dependencies]
