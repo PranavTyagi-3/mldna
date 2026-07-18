@@ -9,7 +9,7 @@ from pathlib import Path
 import mlflow
 
 from mlops import __version__
-from mlops.core import discovery, git, hashing, identity, tags
+from mlops.core import discovery, dvc, git, hashing, identity, tags
 from mlops.core.lock import RunLock
 
 
@@ -58,6 +58,9 @@ class track_run(ContextDecorator):
         mlflow.set_tag(tags.MLOPS_VERSION, __version__)
         if dirty:
             mlflow.set_tag(tags.DIRTY, "true")
+        data_hash = dvc.read_data_hash(self.workspace_dir)
+        if data_hash:
+            mlflow.set_tag(tags.DVC_DATA_HASH, data_hash)
 
         params_path = self.workspace_dir / "params.yaml"
         if params_path.exists():

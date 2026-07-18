@@ -69,6 +69,19 @@ def test_run_has_lineage_tags(git_repo):
     assert tags["user"] == "dev@example.com"
     assert "mlops_version" in tags
     assert "dirty" not in tags
+    assert "dvc_data_hash" not in tags
+
+
+def test_dvc_data_hash_tag_set_when_dataset_tracked(producer_repo):
+    import subprocess
+    subprocess.run(["git", "add", "-A"], cwd=producer_repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "scaffold"], cwd=producer_repo, check=True)
+
+    with track_run("test-model", workspace_dir=producer_repo) as run:
+        run_id = run.run_id
+
+    tags = _get_run(producer_repo, run_id).data.tags
+    assert tags["dvc_data_hash"].endswith(".dir")
 
 
 def test_model_file_is_discovered_and_hashed(git_repo):
