@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 
-from mlops.core import dvc, git
+from mlops.core import blobauth, dvc, git
 
 
 class PushError(Exception):
@@ -32,6 +32,10 @@ def push(workspace_dir, message="mlops push"):
     committed = diff.returncode != 0
     if committed:
         _run_git(["commit", "-q", "-m", message], workspace_dir, "git commit failed")
+
+    remote_name = blobauth.get_default_remote(workspace_dir)
+    if remote_name:
+        blobauth.resolve_env_override(workspace_dir, remote_name)
 
     _run_dvc(["push", "-q"], workspace_dir,
               "dvc push failed - is a remote configured? run `dvc remote add -d <name> <url>`")
