@@ -8,8 +8,14 @@ from mlops.core.conversions import ConversionError
 from mlops.core.push import PushError, push as core_push
 from mlops.core.resolve import ResolveError
 from mlops.core.rungates import RunGateError
-from mlops.core.scaffold import scaffold_producer
+from mlops.core.scaffold import (
+    configure_dvc_remote,
+    has_azure_config,
+    scaffold_producer,
+    write_azure_config,
+)
 from mlops.core.structure import StructureError
+from mlops.doctor import run_doctor
 from mlops.publish import PublishError, publish as core_publish
 
 PUBLISH_ERRORS = (
@@ -46,12 +52,44 @@ def main(
 def init(
     model_name: str,
     dir: str = typer.Option(".", "--dir", help="Target project directory"),
+    azure: bool = typer.Option(False, "--azure", help="Configure Azure ML tracking + blob remote"),
+    subscription_id: str = typer.Option(None, "--subscription-id"),
+    resource_group: str = typer.Option(None, "--resource-group"),
+    workspace: str = typer.Option(None, "--workspace"),
+    dvc_account: str = typer.Option(None, "--dvc-account"),
+    dvc_container: str = typer.Option(None, "--dvc-container"),
+    dvc_prefix: str = typer.Option(None, "--dvc-prefix"),
 ) -> None:
     """Scaffold a producer project."""
     created = scaffold_producer(dir, model_name)
     for path in created:
         typer.echo(f"created {path}")
     typer.echo(f"Initialized producer project '{model_name}'.")
+
+    if not azure:
+        return
+
+    if has_azure_config(dir):
+        typer.echo("mlops.yaml already has an azure: section - not re-prompting.")
+        return
+
+    subscription_id = subscription_id or typer.prompt("Azure subscription ID")
+    resource_group = resource_group or typer.prompt("Azure resource group")
+    workspace = workspace or typer.prompt("Azure ML workspace name")
+    write_azure_config(dir, subscription_id, resource_group, workspace)
+    typer.echo("Wrote azure: section to mlops.yaml")
+
+    dvc_account = dvc_account or typer.prompt("DVC storage account name")
+    dvc_container = dvc_container or typer.prompt("DVC container name")
+    dvc_prefix = dvc_prefix or typer.prompt("DVC prefix", default=model_name)
+    configure_dvc_remote(dir, dvc_account, dvc_container, dvc_prefix)
+    typer.echo("Wrote dvc: section to mlops.yaml and configured the DVC remote")
+
+    typer.echo(
+        "If this machine doesn't have az login access, run "
+        "`mlops configure aml-auth` and `mlops configure blob-auth` to set "
+        "shared secrets."
+    )
 
 
 @app.command()
@@ -144,6 +182,23 @@ def configure_blob_auth(
             connection_string = typer.prompt("Connection string", hide_input=True)
         blobauth.set_connection_string(dir, remote_name, connection_string)
         typer.echo(f"Saved connection string for remote '{remote_name}' to .dvc/config.local")
+
+
+@app.command()
+def doctor(
+    dir: str = typer.Option(".", "--dir", help="Target project directory"),
+) -> None:
+    """Check tool availability, auth, git remote, gitignore, and committed secrets."""
+    results = run_doctor(dir)
+    failed = False
+    for result in results:
+        mark = "OK" if result.passed else "FAIL"
+        typer.echo(f"[{mark}] {result.name}: {result.message}")
+        if not result.passed:
+            failed = True
+
+    if failed:
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

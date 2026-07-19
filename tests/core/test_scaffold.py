@@ -1,6 +1,11 @@
 import yaml
 
-from mlops.core.scaffold import scaffold_producer
+from mlops.core.scaffold import (
+    configure_dvc_remote,
+    has_azure_config,
+    scaffold_producer,
+    write_azure_config,
+)
 
 
 def test_creates_expected_layout(tmp_path):
@@ -51,3 +56,47 @@ def test_existing_git_repo_is_reused(tmp_path):
     created = scaffold_producer(tmp_path, "fraud-detector")
 
     assert str(tmp_path / ".git") not in created
+
+
+def test_has_azure_config_false_before_and_true_after(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+    assert has_azure_config(tmp_path) is False
+
+    write_azure_config(tmp_path, "sub", "rg", "ws")
+
+    assert has_azure_config(tmp_path) is True
+
+
+def test_write_azure_config_preserves_project_section(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+
+    write_azure_config(tmp_path, "sub-id", "my-rg", "my-ws")
+
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["project"]["model_name"] == "fraud-detector"
+    assert config["azure"] == {
+        "subscription_id": "sub-id", "resource_group": "my-rg", "workspace": "my-ws",
+    }
+
+
+def test_configure_dvc_remote_writes_config_and_adds_remote(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+
+    configure_dvc_remote(tmp_path, "myaccount", "mycontainer", "fraud-detector")
+
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["dvc"] == {
+        "remote_url": "azure://mycontainer/fraud-detector", "account_name": "myaccount",
+    }
+    from mlops.core import blobauth
+    assert blobauth.get_default_remote(tmp_path) == "azure"
+
+
+def test_configure_dvc_remote_idempotent(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+    configure_dvc_remote(tmp_path, "myaccount", "mycontainer", "fraud-detector")
+
+    configure_dvc_remote(tmp_path, "other-account", "other-container", "other-prefix")
+
+    from mlops.core import blobauth
+    assert blobauth.get_default_remote(tmp_path) == "azure"

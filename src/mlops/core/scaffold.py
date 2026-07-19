@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 from mlops import __version__
-from mlops.core import dvc
+from mlops.core import blobauth, dvc
 
 GITIGNORE = "models/\noutputs/\n.mlops/\nmlruns/\n.dvc/cache/\n"
 
@@ -58,3 +58,34 @@ def scaffold_producer(project_dir, model_name):
         created.append(str(project_dir / "dataset.dvc"))
 
     return created
+
+
+def has_azure_config(project_dir):
+    config_path = Path(project_dir) / "mlops.yaml"
+    if not config_path.exists():
+        return False
+    data = yaml.safe_load(config_path.read_text()) or {}
+    return "azure" in data
+
+
+def write_azure_config(project_dir, subscription_id, resource_group, workspace):
+    config_path = Path(project_dir) / "mlops.yaml"
+    data = yaml.safe_load(config_path.read_text()) or {}
+    data["azure"] = {
+        "subscription_id": subscription_id,
+        "resource_group": resource_group,
+        "workspace": workspace,
+    }
+    config_path.write_text(yaml.dump(data, sort_keys=False))
+
+
+def configure_dvc_remote(project_dir, account_name, container, prefix, remote_name="azure"):
+    config_path = Path(project_dir) / "mlops.yaml"
+    data = yaml.safe_load(config_path.read_text()) or {}
+    remote_url = f"azure://{container}/{prefix}"
+    data["dvc"] = {"remote_url": remote_url, "account_name": account_name}
+    config_path.write_text(yaml.dump(data, sort_keys=False))
+
+    if not blobauth.get_default_remote(project_dir):
+        dvc.run(["remote", "add", "-d", remote_name, remote_url], cwd=project_dir)
+        dvc.run(["remote", "modify", remote_name, "account_name", account_name], cwd=project_dir)
