@@ -5,12 +5,12 @@ from mlops.azure import auth as aml_auth
 from mlops.core import blobauth
 from mlops.core.commitcheck import CommitReachabilityError
 from mlops.core.conversions import ConversionError
-from mlops.core.publish import PublishError, publish as core_publish
 from mlops.core.push import PushError, push as core_push
 from mlops.core.resolve import ResolveError
 from mlops.core.rungates import RunGateError
 from mlops.core.scaffold import scaffold_producer
 from mlops.core.structure import StructureError
+from mlops.publish import PublishError, publish as core_publish
 
 PUBLISH_ERRORS = (
     PublishError, ResolveError, RunGateError, CommitReachabilityError,

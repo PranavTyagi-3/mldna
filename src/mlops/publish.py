@@ -9,6 +9,7 @@ import mlflow
 from mlops.core import commitcheck, hashing, identity, manifest, rungates, structure
 from mlops.core.conversions import verify_bundle
 from mlops.core.resolve import resolve_run
+from mlops.trackinguri import resolve_and_set_tracking_uri
 
 
 class PublishError(Exception):
@@ -42,7 +43,8 @@ def publish(pkl_path, model_name, workspace_dir=".", format_dirs=(), confirm=Non
     pkl_path = Path(pkl_path)
     format_dirs = [Path(d) for d in format_dirs]
 
-    mlflow.set_tracking_uri(f"file:{workspace_dir / 'mlruns'}")
+    _, mode = resolve_and_set_tracking_uri(workspace_dir)
+    print(f"Tracking mode: {mode}")
 
     resolved = resolve_run(model_name, pkl_path)
     run = rungates.check_run_gates(resolved.run_id)

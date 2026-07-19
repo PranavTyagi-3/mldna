@@ -12,6 +12,7 @@ from mlops import __version__
 from mlops.core import conversions, discovery, dvc, git, hashing, identity, tags
 from mlops.core.lock import RunLock
 from mlops.core.resolve import resolve_run
+from mlops.trackinguri import resolve_and_set_tracking_uri
 
 
 class TrackRunError(Exception):
@@ -46,7 +47,12 @@ class track_run(ContextDecorator):
                 "`git config user.email`, to attribute this run."
             )
 
-        mlflow.set_tracking_uri(f"file:{self.workspace_dir / 'mlruns'}")
+        try:
+            _, mode = resolve_and_set_tracking_uri(self.workspace_dir)
+        except Exception:
+            self.lock.release()
+            raise
+        print(f"track_run: tracking mode {mode}")
         mlflow.set_experiment(self.model_name)
 
         self._before_snapshot = discovery.snapshot(self.workspace_dir)
@@ -134,7 +140,7 @@ class track_convert(ContextDecorator):
         self.lock.acquire()
         try:
             self.source_pkl_sha = hashing.sha256_file(self.pkl_path)
-            mlflow.set_tracking_uri(f"file:{self.workspace_dir / 'mlruns'}")
+            resolve_and_set_tracking_uri(self.workspace_dir)
             resolved = resolve_run(self.model_name, self.pkl_path)
         except Exception:
             self.lock.release()

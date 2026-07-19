@@ -5,10 +5,10 @@ import pytest
 
 from mlops.core.commitcheck import CommitReachabilityError
 from mlops.core.conversions import ConversionError
-from mlops.core.publish import PublishError, publish
 from mlops.core.push import push as core_push
 from mlops.core.resolve import ResolveError
 from mlops.core.rungates import RunGateError
+from mlops.publish import PublishError, publish
 from mlops.tracking import track_convert, track_run
 
 
