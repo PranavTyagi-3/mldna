@@ -39,3 +39,7 @@ def is_ancestor(repo_dir, sha, ref) -> bool:
 
 def push_branch(repo_dir, branch, remote="origin"):
     subprocess.run(["git", "push", remote, branch], cwd=repo_dir, check=True, capture_output=True, text=True)
+
+
+def pull_branch(repo_dir, branch, remote="origin"):
+    subprocess.run(["git", "pull", remote, branch], cwd=repo_dir, check=True, capture_output=True, text=True)

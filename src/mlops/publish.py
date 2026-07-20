@@ -7,6 +7,7 @@ from pathlib import Path
 import mlflow
 
 from mlops.core import commitcheck, hashing, identity, manifest, rungates, structure
+from mlops.core.config import ProjectConfig
 from mlops.core.conversions import verify_bundle
 from mlops.core.resolve import resolve_run
 from mlops.trackinguri import resolve_and_set_tracking_uri
@@ -38,10 +39,18 @@ def _summary(model_name, run, resolved, published_by):
     return "\n".join(lines)
 
 
-def publish(pkl_path, model_name, workspace_dir=".", format_dirs=(), confirm=None):
+def publish(pkl_path, workspace_dir=".", format_dirs=(), confirm=None):
     workspace_dir = Path(workspace_dir)
     pkl_path = Path(pkl_path)
     format_dirs = [Path(d) for d in format_dirs]
+
+    config = ProjectConfig.load(workspace_dir)
+    if not config.model_name:
+        raise PublishError(
+            "mlops.yaml has no project.model_name set, so there's no experiment "
+            "to resolve the run from. Fix: set project.model_name in mlops.yaml."
+        )
+    model_name = config.model_name
 
     _, mode = resolve_and_set_tracking_uri(workspace_dir)
     print(f"Tracking mode: {mode}")
@@ -49,7 +58,7 @@ def publish(pkl_path, model_name, workspace_dir=".", format_dirs=(), confirm=Non
     resolved = resolve_run(model_name, pkl_path)
     run = rungates.check_run_gates(resolved.run_id)
     commitcheck.check_commit_reachable(workspace_dir, resolved.run_id)
-    structure.check_structure(pkl_path, format_dirs)
+    structure.check_structure(pkl_path, format_dirs, require_formats=config.require_formats)
 
     existing_conversions = _existing_conversions(resolved.run_id)
     verify_bundle(existing_conversions, format_dirs, hashing.sha256_file(pkl_path))
@@ -91,4 +100,4 @@ def publish(pkl_path, model_name, workspace_dir=".", format_dirs=(), confirm=Non
     client.set_model_version_tag(model_name, registered.version, "source_run", resolved.run_id)
     client.set_model_version_tag(model_name, registered.version, "published_by", published_by)
 
-    return {"version": registered.version, "run_id": resolved.run_id}
+    return {"version": registered.version, "run_id": resolved.run_id, "model_name": model_name}

@@ -39,6 +39,15 @@ def resolve_aml_credential(workspace_dir):
 
     creds = read_local_auth(workspace_dir)
     if creds:
+        # azureml-mlflow builds its own DefaultAzureCredential() internally for
+        # every real API call beyond this function's own workspace lookup - it
+        # never sees the ClientSecretCredential object below. Setting the same
+        # env vars its EnvironmentCredential leg reads is what actually makes
+        # this leg authenticate real run/log/publish calls, not just resolve a
+        # tracking URI.
+        os.environ["AZURE_TENANT_ID"] = creds["tenant_id"]
+        os.environ["AZURE_CLIENT_ID"] = creds["client_id"]
+        os.environ["AZURE_CLIENT_SECRET"] = creds["client_secret"]
         credential = ClientSecretCredential(
             creds["tenant_id"], creds["client_id"], creds["client_secret"]
         )

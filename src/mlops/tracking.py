@@ -1,3 +1,4 @@
+import functools
 import json
 import subprocess
 import sys
@@ -10,6 +11,7 @@ import mlflow
 
 from mlops import __version__
 from mlops.core import conversions, discovery, dvc, git, hashing, identity, tags
+from mlops.core.config import ProjectConfig
 from mlops.core.lock import RunLock
 from mlops.core.resolve import resolve_run
 from mlops.trackinguri import resolve_and_set_tracking_uri
@@ -19,15 +21,41 @@ class TrackRunError(Exception):
     pass
 
 
+@functools.lru_cache(maxsize=1)
+def _pip_freeze():
+    return subprocess.run(
+        [sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True
+    ).stdout
+
+
+def _require_model_name(workspace_dir):
+    config = ProjectConfig.load(workspace_dir)
+    if not config.model_name:
+        raise TrackRunError(
+            "mlops.yaml has no project.model_name set, so there's nothing to "
+            "attribute this run to. Fix: run `mlops init <model-name>` in "
+            f"{workspace_dir}, or set project.model_name in mlops.yaml."
+        )
+    return config
+
+
 class track_run(ContextDecorator):
-    def __init__(self, model_name, workspace_dir=".", allow_dirty=False):
+    def __init__(self, workspace_dir=".", allow_dirty=False):
         self.workspace_dir = Path(workspace_dir)
-        self.model_name = model_name
         self.allow_dirty = allow_dirty
         self.lock = RunLock(self.workspace_dir)
 
     def __enter__(self):
         self.lock.acquire()
+
+        try:
+            config = _require_model_name(self.workspace_dir)
+        except TrackRunError:
+            self.lock.release()
+            raise
+        self.model_name = config.model_name
+        self._scan_exclude = config.scan_exclude
+        self._model_globs = config.model_globs
 
         dirty = not git.is_clean(self.workspace_dir)
         if dirty and not self.allow_dirty:
@@ -55,7 +83,7 @@ class track_run(ContextDecorator):
         print(f"track_run: tracking mode {mode}")
         mlflow.set_experiment(self.model_name)
 
-        self._before_snapshot = discovery.snapshot(self.workspace_dir)
+        self._before_snapshot = discovery.snapshot(self.workspace_dir, excludes=self._scan_exclude)
 
         run = mlflow.start_run()
         self.run_id = run.info.run_id
@@ -74,9 +102,7 @@ class track_run(ContextDecorator):
             import yaml
             mlflow.log_params(yaml.safe_load(params_path.read_text()) or {})
 
-        freeze = subprocess.run(
-            [sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True
-        ).stdout
+        freeze = _pip_freeze()
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "requirements.frozen.txt"
             path.write_text(freeze)
@@ -89,15 +115,21 @@ class track_run(ContextDecorator):
         try:
             self._record_checksums()
         finally:
-            mlflow.end_run(status=status)
-            self._write_last_run(status)
-            self.lock.release()
+            try:
+                mlflow.end_run(status=status)
+            finally:
+                # Marker + lock release must happen even if end_run() raises
+                # (e.g. a client-side crash after the server-side status
+                # update already went through) - otherwise a transient mlflow
+                # error leaves the workspace permanently locked.
+                self._write_last_run(status)
+                self.lock.release()
         return False
 
     def _record_checksums(self):
-        after_snapshot = discovery.snapshot(self.workspace_dir)
+        after_snapshot = discovery.snapshot(self.workspace_dir, excludes=self._scan_exclude)
         changed = discovery.diff(self._before_snapshot, after_snapshot)
-        model_files = discovery.filter_by_globs(changed)
+        model_files = discovery.filter_by_globs(changed, globs=self._model_globs)
         if not model_files:
             return
 
@@ -130,15 +162,17 @@ class track_run(ContextDecorator):
 
 
 class track_convert(ContextDecorator):
-    def __init__(self, pkl_path, model_name, workspace_dir="."):
+    def __init__(self, pkl_path, workspace_dir="."):
         self.workspace_dir = Path(workspace_dir)
         self.pkl_path = Path(pkl_path)
-        self.model_name = model_name
         self.lock = RunLock(self.workspace_dir)
 
     def __enter__(self):
         self.lock.acquire()
         try:
+            config = _require_model_name(self.workspace_dir)
+            self.model_name = config.model_name
+            self._scan_exclude = config.scan_exclude
             self.source_pkl_sha = hashing.sha256_file(self.pkl_path)
             resolve_and_set_tracking_uri(self.workspace_dir)
             resolved = resolve_run(self.model_name, self.pkl_path)
@@ -147,7 +181,7 @@ class track_convert(ContextDecorator):
             raise
         self.run_id = resolved.run_id
         print(f"track_convert: attaching conversions of {self.pkl_path} to run {self.run_id}")
-        self._before_snapshot = discovery.snapshot(self.workspace_dir)
+        self._before_snapshot = discovery.snapshot(self.workspace_dir, excludes=self._scan_exclude)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -159,7 +193,7 @@ class track_convert(ContextDecorator):
         return False
 
     def _record_conversions(self):
-        after_snapshot = discovery.snapshot(self.workspace_dir)
+        after_snapshot = discovery.snapshot(self.workspace_dir, excludes=self._scan_exclude)
         changed = discovery.diff(self._before_snapshot, after_snapshot)
         if not changed:
             print("track_convert: warning - no new files were produced in this block.")

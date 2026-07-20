@@ -23,6 +23,18 @@ def check_run_gates(run_id):
             f"published (dirty=true is permanent). Retrain from a committed state."
         )
 
+    if "registry_version" in run.data.tags:
+        raise RunGateError(
+            f"Run {run_id} was already published as version "
+            f"{run.data.tags['registry_version']} (by "
+            f"{run.data.tags.get('published_by', '?')} at "
+            f"{run.data.tags.get('published_at', '?')}). Publishing the same run "
+            f"twice is refused - the pkl you pointed at has identical content to "
+            f"what was already published, so there's nothing new to publish. "
+            f"Fix: retrain inside a fresh `mlops.track_run()` block so the saved "
+            f"model has new content, then publish that new run."
+        )
+
     missing = [t for t in REQUIRED_TAGS if t not in run.data.tags]
     if missing:
         raise RunGateError(

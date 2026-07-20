@@ -8,30 +8,43 @@ version = "0.0.1"
 description = "Internal MLOps framework combining DVC + MLflow on an Azure ML backend"
 requires-python = ">=3.10"
 dependencies = [
+    # mlflow-skinny, not full mlflow: mlops only ever acts as an mlflow *client*
+    # (local file:-store tracking, or Azure ML's own hosted server) — it never
+    # runs `mlflow server` itself. Full mlflow bundles a Flask tracking server
+    # plus scikit-learn/pandas/matplotlib/docker/sqlalchemy for flavors and UI
+    # features mlops never touches; azureml-mlflow itself only ever requires
+    # mlflow-skinny (verified via its own package metadata), so this pin doesn't
+    # cost anything on the Azure path either.
+    #
     # mlflow 3.x's register_model() calls a "Logged Models" search endpoint that
     # Azure ML's MLflow-compatible tracking server does not implement (404) —
     # verified via spikes/02_register_folder_model.py. Pin to the 2.x line, which
     # registers folder bundles the old way and works against AML today.
-    "mlflow<3",
+    "mlflow-skinny<3",
+    "dvc[azure]",
+    "typer",
+    "pyyaml",
+    "psutil",
+]
+
+[project.optional-dependencies]
+azure = [
     # Unpinned pip resolved azureml-mlflow down to 1.36.0 (2022-era, incompatible
     # artifact-repo builder signature). 1.62.0.post5 is the latest available and
     # is what spikes 01-03 were verified against.
     "azureml-mlflow>=1.62",
     "azure-ai-ml",
     "azure-identity",
-    "dvc[azure]",
-    "typer",
-    "pyyaml",
-    "psutil",
     # azureml-mlflow's plugin registration uses pkg_resources (old-style entry
     # points), which setuptools>=81 no longer bundles by default. Without this
     # pin, mlflow.set_tracking_uri("azureml://...") fails to resolve the scheme.
+    # Only azureml-mlflow needs this — local-only installs don't touch that
+    # code path at all.
     "setuptools<81",
 ]
-
-[project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-xdist",
 ]
 
 [project.scripts]
@@ -42,3 +55,4 @@ packages = ["src/mlops"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-n auto"

@@ -13,7 +13,7 @@ def _tracked_pkl(repo):
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "scaffold"], cwd=repo, check=True)
     core_push(repo)
-    with track_run("test-model", workspace_dir=repo) as run:
+    with track_run(workspace_dir=repo) as run:
         pkl = repo / "models" / "model.pkl"
         pkl.parent.mkdir(exist_ok=True)
         pkl.write_bytes(b"trained model bytes")
@@ -24,7 +24,7 @@ def test_publish_yes_succeeds_noninteractively(producer_repo):
     pkl, run_id = _tracked_pkl(producer_repo)
 
     result = runner.invoke(app, [
-        "publish", str(pkl), "test-model", "--dir", str(producer_repo), "--yes",
+        "publish", str(pkl), "--dir", str(producer_repo), "--yes",
     ])
 
     assert result.exit_code == 0
@@ -35,7 +35,7 @@ def test_publish_without_yes_declines(producer_repo):
     pkl, run_id = _tracked_pkl(producer_repo)
 
     result = runner.invoke(app, [
-        "publish", str(pkl), "test-model", "--dir", str(producer_repo),
+        "publish", str(pkl), "--dir", str(producer_repo),
     ], input="n\n")
 
     assert result.exit_code == 1

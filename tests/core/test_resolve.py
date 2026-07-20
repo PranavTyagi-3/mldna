@@ -21,7 +21,7 @@ def _commit_change(repo, message):
 
 def test_resolve_finds_single_match(producer_repo, tmp_path):
     _commit_scaffold(producer_repo)
-    with track_run("test-model", workspace_dir=producer_repo) as run:
+    with track_run(workspace_dir=producer_repo) as run:
         run_id = run.run_id
         (producer_repo / "models" / "model.pkl").write_bytes(MODEL_BYTES)
 
@@ -36,7 +36,7 @@ def test_resolve_finds_single_match(producer_repo, tmp_path):
 
 def test_resolve_zero_match_raises(producer_repo, tmp_path):
     _commit_scaffold(producer_repo)
-    with track_run("test-model", workspace_dir=producer_repo):
+    with track_run(workspace_dir=producer_repo):
         (producer_repo / "models" / "model.pkl").write_bytes(MODEL_BYTES)
 
     candidate = tmp_path / "never_tracked.pkl"
@@ -49,11 +49,11 @@ def test_resolve_zero_match_raises(producer_repo, tmp_path):
 def test_resolve_ambiguous_identical_lineage_auto_resolves(producer_repo, tmp_path):
     _commit_scaffold(producer_repo)
 
-    with track_run("test-model", workspace_dir=producer_repo) as run1:
+    with track_run(workspace_dir=producer_repo) as run1:
         run1_id = run1.run_id
         (producer_repo / "models" / "model_a.pkl").write_bytes(MODEL_BYTES)
 
-    with track_run("test-model", workspace_dir=producer_repo):
+    with track_run(workspace_dir=producer_repo):
         (producer_repo / "models" / "model_b.pkl").write_bytes(MODEL_BYTES)
 
     candidate = tmp_path / "to_publish.pkl"
@@ -68,12 +68,12 @@ def test_resolve_ambiguous_identical_lineage_auto_resolves(producer_repo, tmp_pa
 def test_resolve_ambiguous_differing_lineage_raises(producer_repo, tmp_path):
     _commit_scaffold(producer_repo)
 
-    with track_run("test-model", workspace_dir=producer_repo):
+    with track_run(workspace_dir=producer_repo):
         (producer_repo / "models" / "model_a.pkl").write_bytes(MODEL_BYTES)
 
     _commit_change(producer_repo, "unrelated code change")
 
-    with track_run("test-model", workspace_dir=producer_repo):
+    with track_run(workspace_dir=producer_repo):
         (producer_repo / "models" / "model_b.pkl").write_bytes(MODEL_BYTES)
 
     candidate = tmp_path / "to_publish.pkl"

@@ -2,9 +2,13 @@ import yaml
 
 from mlops.core.scaffold import (
     configure_dvc_remote,
+    configure_local_dvc_remote,
     has_azure_config,
+    has_dvc_config,
+    scaffold_consumer,
     scaffold_producer,
     write_azure_config,
+    write_azure_tracking_uri,
 )
 
 
@@ -100,3 +104,94 @@ def test_configure_dvc_remote_idempotent(tmp_path):
 
     from mlops.core import blobauth
     assert blobauth.get_default_remote(tmp_path) == "azure"
+
+
+def test_scaffold_consumer_creates_expected_layout(tmp_path):
+    scaffold_consumer(tmp_path)
+
+    for name in ("mlops.yaml", "models.lock.yaml", "ci/mlops-fetch.snippet.yml",
+                 ".gitignore", ".git"):
+        assert (tmp_path / name).exists()
+
+    for unwanted in ("dataset", "models", "outputs", "main.py", ".dvc"):
+        assert not (tmp_path / unwanted).exists()
+
+
+def test_scaffold_consumer_writes_consumer_repo_role(tmp_path):
+    scaffold_consumer(tmp_path)
+
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["project"]["repo_role"] == "consumer"
+    assert "model_name" not in config["project"]
+
+
+def test_scaffold_consumer_gitignore_protects_mlops_dir(tmp_path):
+    scaffold_consumer(tmp_path)
+
+    assert ".mlops/" in (tmp_path / ".gitignore").read_text()
+
+
+def test_scaffold_consumer_appends_to_existing_gitignore(tmp_path):
+    (tmp_path / ".gitignore").write_text("node_modules/\n")
+
+    scaffold_consumer(tmp_path)
+
+    gitignore = (tmp_path / ".gitignore").read_text()
+    assert "node_modules/" in gitignore
+    assert ".mlops/" in gitignore
+
+
+def test_scaffold_consumer_idempotent(tmp_path):
+    scaffold_consumer(tmp_path)
+    (tmp_path / "models.lock.yaml").write_text("fraud-detector:\n  version: 1\n  format: pkl\n  dest: x\n")
+
+    created = scaffold_consumer(tmp_path)
+
+    assert created == []
+    assert "fraud-detector" in (tmp_path / "models.lock.yaml").read_text()
+
+
+def test_write_azure_tracking_uri_preserves_project_section(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+
+    write_azure_tracking_uri(tmp_path, "azureml://pasted-endpoint")
+
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["project"]["model_name"] == "fraud-detector"
+    assert config["azure"] == {"tracking_uri": "azureml://pasted-endpoint"}
+
+
+def test_has_dvc_config_false_before_and_true_after(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+    assert has_dvc_config(tmp_path) is False
+
+    configure_dvc_remote(tmp_path, "acct", "container", "prefix")
+
+    assert has_dvc_config(tmp_path) is True
+
+
+def test_configure_local_dvc_remote_writes_config_and_adds_remote(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+    local_path = tmp_path.parent / "fraud-detector-dvc-storage"
+
+    configure_local_dvc_remote(tmp_path, str(local_path))
+
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["dvc"] == {"remote_url": str(local_path)}
+    assert "account_name" not in config["dvc"]
+    from mlops.core import blobauth
+    assert blobauth.get_default_remote(tmp_path) == "local"
+    assert local_path.exists()
+
+
+def test_configure_local_dvc_remote_idempotent(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+    first_path = tmp_path.parent / "first"
+    second_path = tmp_path.parent / "second"
+    configure_local_dvc_remote(tmp_path, str(first_path))
+
+    configure_local_dvc_remote(tmp_path, str(second_path))
+
+    from mlops.core import blobauth
+    assert blobauth.get_default_remote(tmp_path) == "local"
+    assert not second_path.exists()

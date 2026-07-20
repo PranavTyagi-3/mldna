@@ -1,7 +1,9 @@
 from types import SimpleNamespace
 
+import pytest
+
 from mlops.core.hashing import sha256_file
-from mlops.core.manifest import build_manifest
+from mlops.core.manifest import ManifestError, build_manifest, resolve_format, verify_format_files
 from mlops.core.resolve import ResolvedRun
 
 
@@ -46,3 +48,60 @@ def test_build_manifest_with_format_dir_and_conversions(tmp_path):
     assert manifest["formats"]["onnx"]["files"] == {"model.onnx": onnx_sha}
     assert manifest["conversions"] == {onnx_sha: conversions[onnx_sha]}
     assert manifest["save_context"] == "in_run"
+
+
+def test_resolve_format_missing_lists_available():
+    manifest = {"model_name": "fraud-detector", "formats": {"pkl": {}, "onnx": {}}}
+
+    with pytest.raises(ManifestError, match=r"\[onnx, pkl\]"):
+        resolve_format(manifest, "openvino")
+
+
+def test_resolve_format_returns_entry():
+    manifest = {"formats": {"onnx": {"path": "onnx/", "files": {"model.onnx": "abc"}}}}
+
+    assert resolve_format(manifest, "onnx") == {"path": "onnx/", "files": {"model.onnx": "abc"}}
+
+
+def test_verify_format_files_single_file_ok(tmp_path):
+    (tmp_path / "model.pkl").write_bytes(b"bytes")
+    format_entry = {"path": "model.pkl", "sha256": sha256_file(tmp_path / "model.pkl")}
+
+    verify_format_files(tmp_path, format_entry)  # no raise
+
+
+def test_verify_format_files_single_file_mismatch_refuses(tmp_path):
+    (tmp_path / "model.pkl").write_bytes(b"bytes")
+    format_entry = {"path": "model.pkl", "sha256": "wrong"}
+
+    with pytest.raises(ManifestError, match="checksum mismatch"):
+        verify_format_files(tmp_path, format_entry)
+
+
+def test_verify_format_files_missing_file_refuses(tmp_path):
+    format_entry = {"path": "model.pkl", "sha256": "abc"}
+
+    with pytest.raises(ManifestError, match="missing"):
+        verify_format_files(tmp_path, format_entry)
+
+
+def test_verify_format_files_dir_ok(tmp_path):
+    (tmp_path / "model.xml").write_bytes(b"xml")
+    (tmp_path / "model.bin").write_bytes(b"bin")
+    format_entry = {
+        "path": "openvino/",
+        "files": {
+            "model.xml": sha256_file(tmp_path / "model.xml"),
+            "model.bin": sha256_file(tmp_path / "model.bin"),
+        },
+    }
+
+    verify_format_files(tmp_path, format_entry)  # no raise
+
+
+def test_verify_format_files_dir_mismatch_refuses(tmp_path):
+    (tmp_path / "model.xml").write_bytes(b"xml")
+    format_entry = {"path": "openvino/", "files": {"model.xml": "wrong"}}
+
+    with pytest.raises(ManifestError, match="checksum mismatch"):
+        verify_format_files(tmp_path, format_entry)

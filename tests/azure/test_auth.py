@@ -58,6 +58,22 @@ def test_env_var_takes_precedence_over_local_file(tmp_path, monkeypatch):
     assert "env var" in mode
 
 
+def test_local_file_leg_sets_env_vars_for_real_api_calls(tmp_path, monkeypatch):
+    # azureml-mlflow builds its own DefaultAzureCredential() for every real
+    # run/log/publish call - it never sees the ClientSecretCredential object
+    # this function returns. Only setting these env vars makes the file leg
+    # actually authenticate, not just resolve the tracking URI.
+    _clear_env(monkeypatch)
+    write_local_auth(tmp_path, "t", "c", "s")
+
+    resolve_aml_credential(tmp_path)
+
+    import os
+    assert os.environ["AZURE_TENANT_ID"] == "t"
+    assert os.environ["AZURE_CLIENT_ID"] == "c"
+    assert os.environ["AZURE_CLIENT_SECRET"] == "s"
+
+
 def test_write_and_clear_local_auth(tmp_path):
     write_local_auth(tmp_path, "t", "c", "s")
     assert read_local_auth(tmp_path) == {"tenant_id": "t", "client_id": "c", "client_secret": "s"}

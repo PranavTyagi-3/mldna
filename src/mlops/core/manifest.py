@@ -5,6 +5,10 @@ import yaml
 from mlops.core import hashing
 
 
+class ManifestError(Exception):
+    pass
+
+
 def _format_files(format_dir):
     format_dir = Path(format_dir)
     return {
@@ -50,3 +54,39 @@ def build_manifest(model_name, run, resolved, pkl_path, format_dirs,
 
 def write_manifest(manifest, path):
     Path(path).write_text(yaml.dump(manifest, sort_keys=False))
+
+
+def resolve_format(manifest, format_name):
+    formats = manifest.get("formats", {})
+    if format_name not in formats:
+        available = ", ".join(sorted(formats)) or "none"
+        raise ManifestError(
+            f"{manifest.get('model_name', 'this version')} has formats [{available}]; "
+            f"you requested '{format_name}'. "
+            f"Fix: pin a format in models.lock.yaml that this version actually published."
+        )
+    return formats[format_name]
+
+
+def _verify_one(file_path, expected_sha256, label):
+    if not file_path.exists():
+        raise ManifestError(
+            f"expected file '{label}' missing from the downloaded bundle. "
+            f"Fix: re-run mlops fetch; if this persists, contact the model publisher."
+        )
+    actual = hashing.sha256_file(file_path)
+    if actual != expected_sha256:
+        raise ManifestError(
+            f"checksum mismatch for '{label}': expected {expected_sha256}, got {actual}. "
+            f"Fix: re-run mlops fetch; if this persists, the registry artifact may be corrupted."
+        )
+
+
+def verify_format_files(local_dir, format_entry):
+    local_dir = Path(local_dir)
+    if "sha256" in format_entry:
+        file_path = local_dir / Path(format_entry["path"]).name
+        _verify_one(file_path, format_entry["sha256"], file_path.name)
+        return
+    for relpath, expected in format_entry.get("files", {}).items():
+        _verify_one(local_dir / relpath, expected, relpath)
