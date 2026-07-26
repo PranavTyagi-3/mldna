@@ -49,12 +49,16 @@ def _force_rmtree(path):
     import os
     import shutil
     import stat
+    import sys
 
     def _on_exc(func, p, exc):
         os.chmod(p, stat.S_IWRITE)
         func(p)
 
-    shutil.rmtree(path, onexc=_on_exc)
+    # onexc is 3.12+; onerror is its pre-3.12 spelling. The handler ignores
+    # the third argument, so the signature difference doesn't matter.
+    kwarg = "onexc" if sys.version_info >= (3, 12) else "onerror"
+    shutil.rmtree(path, **{kwarg: _on_exc})
 
 
 def test_pull_fails_clearly_without_dvc_remote(tmp_path):
