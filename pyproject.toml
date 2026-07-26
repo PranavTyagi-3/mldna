@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlops"
-version = "0.0.1"
+version = "0.1.0"
 description = "A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned model consumption"
 readme = "README.md"
 license = { text = "MIT" }

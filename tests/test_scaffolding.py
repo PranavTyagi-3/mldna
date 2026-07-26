@@ -7,7 +7,14 @@ runner = CliRunner()
 
 
 def test_package_has_version():
-    assert mlops.__version__ == "0.0.1"
+    # Assert agreement with pyproject.toml rather than a literal, so a
+    # version bump can't silently leave the two sources out of sync.
+    # (Regex, not tomllib: tomllib is 3.11+ and this package supports 3.10.)
+    import re
+    from pathlib import Path
+    pyproject = (Path(__file__).parent.parent / "pyproject.toml").read_text()
+    declared = re.search(r'^version = "(.+)"$', pyproject, re.MULTILINE).group(1)
+    assert mlops.__version__ == declared
 
 
 def test_cli_version_flag():
