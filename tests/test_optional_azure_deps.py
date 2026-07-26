@@ -6,10 +6,11 @@ import textwrap
 # [azure] extra) crashed - not just on import, but with a raw unhandled
 # traceback the moment any Azure code path was actually exercised - because
 # several places imported azure-ai-ml (an [azure]-extra-only package)
-# without catching ImportError. `azure.identity` is fine to import
-# unconditionally: it's a real transitive dependency of the base
-# `dvc[azure]` requirement, not extra-only.
-BLOCKED_MODULES = ("azure.ai.ml", "azureml.mlflow")
+# without catching ImportError. Since D#35 the base dependency is plain
+# `dvc`, not `dvc[azure]`, so NO azure.* / azureml.* module is guaranteed
+# present on a base install anymore - block the whole namespaces, exactly
+# what a real base venv looks like.
+BLOCKED_MODULES = ("azure", "azureml")
 
 _BLOCKER_PREAMBLE = textwrap.dedent(f"""
     import sys
@@ -42,6 +43,51 @@ def test_mlops_package_imports_without_azure_extra():
     result = _run_without_azure_extras("import mlops; print('OK')")
     assert result.returncode == 0, result.stderr
     assert "OK" in result.stdout
+
+
+def test_configure_aml_auth_fails_cleanly_without_azure_extra(tmp_path):
+    # Saving the secrets file is pure stdlib and must work; the credential
+    # resolution afterward is what needs azure.identity - it must refuse
+    # with the pip-install fix, not a raw traceback.
+    result = _run_without_azure_extras(f"""
+        from typer.testing import CliRunner
+        from mlops.cli.main import app
+        runner = CliRunner()
+        result = runner.invoke(app, [
+            "configure", "aml-auth", "--dir", {str(tmp_path)!r},
+            "--tenant-id", "t", "--client-id", "c", "--client-secret", "s",
+        ])
+        print("EXIT_CODE", result.exit_code)
+        print("OUTPUT", result.output)
+        if result.exception and not isinstance(result.exception, SystemExit):
+            raise result.exception
+    """)
+    assert result.returncode == 0, result.stderr
+    assert "EXIT_CODE 1" in result.stdout
+    assert 'pip install "mlops[azure]"' in result.stdout
+    assert "Traceback" not in result.stdout
+    assert (tmp_path / ".mlops" / "aml_auth.json").exists()
+
+
+def test_init_dvc_azure_aad_fails_cleanly_without_azure_extra(tmp_path):
+    result = _run_without_azure_extras(f"""
+        from typer.testing import CliRunner
+        from mlops.cli.main import app
+        runner = CliRunner()
+        result = runner.invoke(app, [
+            "init", "test-model", "--dir", {str(tmp_path)!r},
+            "--tracking-source", "local", "--dvc-backend", "azure",
+            "--blob-auth-mode", "aad", "--dvc-account", "myacct",
+        ])
+        print("EXIT_CODE", result.exit_code)
+        print("OUTPUT", result.output)
+        if result.exception and not isinstance(result.exception, SystemExit):
+            raise result.exception
+    """)
+    assert result.returncode == 0, result.stderr
+    assert "EXIT_CODE 1" in result.stdout
+    assert 'pip install "mlops[azure]"' in result.stdout
+    assert "Traceback" not in result.stdout
 
 
 def test_init_azure_ad_discovery_fails_cleanly_without_azure_extra(tmp_path):

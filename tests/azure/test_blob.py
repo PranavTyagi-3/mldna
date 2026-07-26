@@ -33,7 +33,7 @@ def test_list_containers_via_connection_string_sorts_names(monkeypatch):
             calls["connection_string"] = connection_string
             return _FakeContainers(["bravo", "alpha"])
 
-    monkeypatch.setattr("mlops.azure.blob.BlobServiceClient", FakeBlobServiceClient)
+    monkeypatch.setattr("mlops.azure.blob._import_blob_client", lambda: FakeBlobServiceClient)
 
     result = list_containers_via_connection_string("fake-connection-string")
 
@@ -53,7 +53,7 @@ def test_list_containers_via_credential_uses_account_url(monkeypatch):
         def list_containers(self):
             return self._inner.list_containers()
 
-    monkeypatch.setattr("mlops.azure.blob.BlobServiceClient", FakeBlobServiceClient)
+    monkeypatch.setattr("mlops.azure.blob._import_blob_client", lambda: FakeBlobServiceClient)
 
     result = list_containers_via_credential("myacct", "fake-credential")
 

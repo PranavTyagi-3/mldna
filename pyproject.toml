@@ -5,7 +5,25 @@ build-backend = "hatchling.build"
 [project]
 name = "mlops"
 version = "0.0.1"
-description = "Internal MLOps framework combining DVC + MLflow on an Azure ML backend"
+description = "A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned model consumption"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Pranav Tyagi", email = "pranavww@gmail.com" }]
+keywords = ["mlops", "mlflow", "dvc", "lineage", "model-registry", "reproducibility", "provenance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Version Control",
+]
 requires-python = ">=3.10"
 dependencies = [
     # mlflow-skinny, not full mlflow: mlops only ever acts as an mlflow *client*
@@ -21,14 +39,22 @@ dependencies = [
     # verified via spikes/02_register_folder_model.py. Pin to the 2.x line, which
     # registers folder bundles the old way and works against AML today.
     "mlflow-skinny<3",
-    "dvc[azure]",
+    # Plain dvc, NOT dvc[azure]: the base install is local-only and must carry
+    # zero Azure dependencies (the README promises this). The [azure] extra
+    # re-adds dvc[azure] for the blob-remote path.
+    "dvc",
     "typer",
     "pyyaml",
     "psutil",
 ]
 
+[project.urls]
+Repository = "https://github.com/PranavTyagi-3/MLOps"
+Issues = "https://github.com/PranavTyagi-3/MLOps/issues"
+
 [project.optional-dependencies]
 azure = [
+    "dvc[azure]",
     # Unpinned pip resolved azureml-mlflow down to 1.36.0 (2022-era, incompatible
     # artifact-repo builder signature). 1.62.0.post5 is the latest available and
     # is what spikes 01-03 were verified against.

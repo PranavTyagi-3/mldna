@@ -2,9 +2,22 @@ import json
 import os
 from pathlib import Path
 
-from azure.identity import ClientSecretCredential, DefaultAzureCredential
-
 AUTH_FILE = "aml_auth.json"
+
+
+def _import_azure_identity():
+    # Lazy so this module stays importable on a base install (no [azure]
+    # extra): cli/main.py imports it at module level for the pure-stdlib
+    # file helpers, which must not drag azure.identity in. Since the dvc
+    # dependency was narrowed from dvc[azure] to plain dvc (D#35),
+    # azure.identity is no longer guaranteed present transitively.
+    try:
+        from azure.identity import ClientSecretCredential, DefaultAzureCredential
+    except ImportError as e:
+        raise ImportError(
+            f'Azure ML auth needs the `azure` extra. Fix: pip install "mlops[azure]" ({e})'
+        )
+    return ClientSecretCredential, DefaultAzureCredential
 
 
 def _auth_file_path(workspace_dir):
@@ -31,6 +44,7 @@ def read_local_auth(workspace_dir):
 
 
 def resolve_aml_credential(workspace_dir):
+    ClientSecretCredential, DefaultAzureCredential = _import_azure_identity()
     tenant_id = os.environ.get("AZURE_TENANT_ID")
     client_id = os.environ.get("AZURE_CLIENT_ID")
     client_secret = os.environ.get("AZURE_CLIENT_SECRET")
