@@ -2,9 +2,9 @@ import subprocess
 
 from typer.testing import CliRunner
 
-from mlops.cli.main import app
-from mlops.core.push import push as core_push
-from mlops.tracking import track_run
+from mldna.cli.main import app
+from mldna.core.push import push as core_push
+from mldna.tracking import track_run
 
 runner = CliRunner()
 

@@ -1,6 +1,6 @@
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
-from mlops.azure.auth import (
+from mldna.azure.auth import (
     clear_local_auth,
     read_local_auth,
     resolve_aml_credential,

@@ -1,14 +1,14 @@
-# mlops
+# mldna
 
 **A lineage layer for ML teams who refuse to be told how to train.**
 
-`mlops` is a thin Python package + CLI that answers one question, mechanically
+`mldna` is a thin Python package + CLI that answers one question, mechanically
 and forever: *which code, which data, and whose hands produced the model
 running in production right now?*
 
 It does this without a pipeline DSL, without a required project layout, and
 without asking you to change how you train. You keep your scripts, your
-notebooks, your favorite framework. `mlops` just makes sure the trail never
+notebooks, your favorite framework. `mldna` just makes sure the trail never
 goes cold.
 
 ---
@@ -26,7 +26,7 @@ This is the state most ML teams quietly end up in:
   the honest answer is usually "we're not sure."
 
 Pipeline frameworks (ZenML, Kedro, Metaflow, ...) fix this by taking over the
-training loop. `mlops` doesn't. It bets that most teams won't adopt a tool
+training loop. `mldna` doesn't. It bets that most teams won't adopt a tool
 that forces a new way of working — so it stays out of the loop entirely and
 proves lineage from the outside, by *fingerprinting and gating* instead of
 *caging*.
@@ -40,11 +40,11 @@ Two rules, held in tension on purpose:
 
 - **Zero workflow prescription.** Train however you want. Any framework, any
   script structure, model files saved anywhere with any name.
-- **Strong guarantees anyway.** Every claim `mlops` makes about a model is
+- **Strong guarantees anyway.** Every claim `mldna` makes about a model is
   backed by a cryptographic fact — a content hash, a clean git tree, a
   reachable commit — never by convention or trust.
 
-And critically: when a guarantee *can't* be made at full strength, `mlops`
+And critically: when a guarantee *can't* be made at full strength, `mldna`
 never hides it. A run trained on a dirty working tree, a model saved after
 training ended, a converted file lacking provenance — all of these are
 allowed to exist, but they are permanently and visibly labeled as weaker
@@ -106,18 +106,18 @@ reconstructed after the fact from logs or memory.
   params, metrics, and lineage tags stream out. Runs are free to be noisy —
   create dozens a day, nobody's grading you on them.
 - **Publishing is manual and deliberate.** A run only becomes a consumable,
-  registered model version when a developer explicitly runs `mlops publish`,
+  registered model version when a developer explicitly runs `mldna publish`,
   which walks the full gate sequence and refuses anything that doesn't hold
   up.
 
 ## Install
 
 ```bash
-pip install mlops                 # local-only: git + DVC + local MLflow
-pip install "mlops[azure]"        # adds the Azure ML backend
+pip install mldna                 # local-only: git + DVC + local MLflow
+pip install "mldna[azure]"        # adds the Azure ML backend
 ```
 
-`mlops.core` never imports anything from `azure.*` — the local-only install
+`mldna.core` never imports anything from `azure.*` — the local-only install
 has zero Azure dependencies, and the Azure backend is a strict additive
 layer on top.
 
@@ -125,38 +125,38 @@ layer on top.
 
 ```bash
 # Producer repo (where a model gets trained)
-mlops init my-model          # scaffold dataset/, models/, mlops.yaml, .gitignore
-mlops push -m "add training data"   # dvc add + git commit + dvc push + git push
+mldna init my-model          # scaffold dataset/, models/, mldna.yaml, .gitignore
+mldna push -m "add training data"   # dvc add + git commit + dvc push + git push
 
 # in your training script:
-#   with mlops.track_run():
+#   with mldna.track_run():
 #       ... train, save your model file anywhere under models/ ...
 
-mlops publish models/model.pkl my-model     # runs the full publish gate chain
+mldna publish models/model.pkl my-model     # runs the full publish gate chain
 ```
 
 ```bash
 # Consumer repo (where a published model gets used)
-mlops init --consumer
+mldna init --consumer
 # edit models.lock.yaml: pin { model: my-model, version: 9, format: pkl }
-mlops fetch                  # verifies checksums, swaps in atomically
+mldna fetch                  # verifies checksums, swaps in atomically
 ```
 
 ## CLI surface
 
 | Command | What it does |
 |---|---|
-| `mlops init [name] [--consumer] [--azure]` | Scaffold a producer or consumer repo |
-| `mlops push` | `dvc add` → commit → `dvc push` → `git push`, idempotently |
-| `mlops publish <file> <model_name>` | Resolve the run by content hash, run every gate, register a version |
-| `mlops fetch` | Pull every pinned version in `models.lock.yaml`, checksum-verified |
-| `mlops pull` | Producer-side: sync code/data, then pull this commit's published bundle if any |
-| `mlops runs [--last N]` | Table of recent runs for this project |
-| `mlops doctor` | Independent health checks: tools, auth, git remote, `.gitignore`, committed secrets |
-| `mlops configure aml-auth` / `configure blob-auth` | Store shared-secret credentials for machines without personal Azure AD access |
+| `mldna init [name] [--consumer] [--azure]` | Scaffold a producer or consumer repo |
+| `mldna push` | `dvc add` → commit → `dvc push` → `git push`, idempotently |
+| `mldna publish <file> <model_name>` | Resolve the run by content hash, run every gate, register a version |
+| `mldna fetch` | Pull every pinned version in `models.lock.yaml`, checksum-verified |
+| `mldna pull` | Producer-side: sync code/data, then pull this commit's published bundle if any |
+| `mldna runs [--last N]` | Table of recent runs for this project |
+| `mldna doctor` | Independent health checks: tools, auth, git remote, `.gitignore`, committed secrets |
+| `mldna configure aml-auth` / `configure blob-auth` | Store shared-secret credentials for machines without personal Azure AD access |
 
-Python API: `mlops.track_run()` (context manager around training),
-`mlops.track_convert()` (record a converted-format file's provenance against
+Python API: `mldna.track_run()` (context manager around training),
+`mldna.track_convert()` (record a converted-format file's provenance against
 its source model).
 
 ## Governance without a promotion ceremony

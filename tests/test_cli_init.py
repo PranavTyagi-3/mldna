@@ -1,7 +1,7 @@
 import yaml
 from typer.testing import CliRunner
 
-from mlops.cli.main import app
+from mldna.cli.main import app
 
 runner = CliRunner()
 
@@ -13,7 +13,7 @@ def test_init_scaffolds_project(tmp_path):
     ])
 
     assert result.exit_code == 0
-    assert (tmp_path / "mlops.yaml").exists()
+    assert (tmp_path / "mldna.yaml").exists()
     assert "Initialized producer project 'fraud-detector'" in result.stdout
 
 
@@ -23,7 +23,7 @@ def test_init_local_tracking_source_has_no_azure_section(tmp_path):
         "--tracking-source", "local", "--dvc-backend", "skip",
     ])
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert "azure" not in config
 
 
@@ -35,7 +35,7 @@ def test_init_bare_prompts_for_tracking_source_and_dvc_backend(tmp_path):
     assert result.exit_code == 0
     assert "Select MLflow tracking source:" in result.output
     assert "Select DVC storage backend:" in result.output
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert "azure" not in config
     assert "dvc" not in config
 
@@ -49,9 +49,9 @@ def test_init_dvc_backend_local_configures_real_remote(tmp_path):
     ])
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"] == {"remote_url": str(dvc_storage)}
-    from mlops.core import blobauth
+    from mldna.core import blobauth
     assert blobauth.get_default_remote(tmp_path) == "local"
 
 
@@ -63,7 +63,7 @@ def test_init_azure_flag_with_options_skips_prompts(tmp_path):
     ])
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["azure"] == {"subscription_id": "sub", "resource_group": "rg", "workspace": "ws"}
     assert config["dvc"] == {"remote_url": "azure://cont/prefix", "account_name": "acct"}
     assert "configure aml-auth" in result.output
@@ -79,18 +79,18 @@ def test_init_service_principal_flow_pastes_tracking_uri(tmp_path):
     ])
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["azure"] == {"tracking_uri": "azureml://pasted-endpoint"}
-    assert (tmp_path / ".mlops" / "aml_auth.json").exists()
+    assert (tmp_path / ".mldna" / "aml_auth.json").exists()
 
 
 def test_init_azure_ad_flow_discovers_and_selects_workspace(tmp_path, monkeypatch):
     # list_workspaces is imported lazily inside _configure_azure_tracking (so
     # a base install without the [azure] extra never needs it at all) -
-    # patch it at its source module, not at mlops.cli.main, which no longer
+    # patch it at its source module, not at mldna.cli.main, which no longer
     # holds a module-level reference to it.
     monkeypatch.setattr(
-        "mlops.azure.tracking.list_workspaces",
+        "mldna.azure.tracking.list_workspaces",
         lambda subscription_id, credential: [
             ("ml-workspace-dev", "rg-dev"), ("ml-workspace-prod", "rg-prod"),
         ],
@@ -107,7 +107,7 @@ def test_init_azure_ad_flow_discovers_and_selects_workspace(tmp_path, monkeypatc
     assert "Select AML workspace:" in result.output
     assert "ml-workspace-dev" in result.output
     assert "ml-workspace-prod" in result.output
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["azure"] == {
         "subscription_id": "sub-123", "resource_group": "rg-prod", "workspace": "ml-workspace-prod",
     }
@@ -134,7 +134,7 @@ def test_init_mlflow_uri_flag_skips_menu(tmp_path):
     ])
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
     assert "azure" not in config
 
@@ -148,7 +148,7 @@ def test_init_bare_prompts_offer_mlflow_menu_option(tmp_path):
 
     assert result.exit_code == 0
     assert "Remote MLflow server (URL)" in result.output
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
 
 
@@ -165,7 +165,7 @@ def test_init_mlflow_flag_does_not_reprompt_when_already_configured(tmp_path):
 
     assert result.exit_code == 0
     assert "already has a tracking source configured" in result.output
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
 
 
@@ -181,8 +181,8 @@ def test_init_consumer_scaffolds_lockfile_and_ci_snippet(tmp_path):
 
     assert result.exit_code == 0
     assert (tmp_path / "models.lock.yaml").exists()
-    assert (tmp_path / "ci" / "mlops-fetch.snippet.yml").exists()
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert (tmp_path / "ci" / "mldna-fetch.snippet.yml").exists()
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["repo_role"] == "consumer"
 
 
@@ -190,7 +190,7 @@ def test_init_dvc_connection_string_derives_account_and_lists_containers(tmp_pat
     # Account name must come from the connection string itself, never asked
     # separately; the container is picked from a real listing instead of typed.
     monkeypatch.setattr(
-        "mlops.azure.blob.list_containers_via_connection_string",
+        "mldna.azure.blob.list_containers_via_connection_string",
         lambda connection_string: ["alpha", "bravo"],
     )
 
@@ -205,7 +205,7 @@ def test_init_dvc_connection_string_derives_account_and_lists_containers(tmp_pat
     assert result.exit_code == 0
     assert "Select DVC container:" in result.output
     assert "alpha" in result.output and "bravo" in result.output
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"] == {
         "remote_url": "azure://bravo/fraud-detector", "account_name": "myacct",
     }
@@ -225,7 +225,7 @@ def test_init_dvc_connection_string_without_account_name_fails_clearly(tmp_path)
 
 def test_init_dvc_aad_lists_containers_for_given_account(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "mlops.azure.blob.list_containers_via_credential",
+        "mldna.azure.blob.list_containers_via_credential",
         lambda account_name, credential: ["datasets"],
     )
     monkeypatch.setattr("azure.identity.DefaultAzureCredential", lambda: "fake-credential")
@@ -238,7 +238,7 @@ def test_init_dvc_aad_lists_containers_for_given_account(tmp_path, monkeypatch):
     ], input="1\n")
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"] == {
         "remote_url": "azure://datasets/fraud-detector", "account_name": "myacct",
     }
@@ -246,7 +246,7 @@ def test_init_dvc_aad_lists_containers_for_given_account(tmp_path, monkeypatch):
 
 def test_init_dvc_container_listing_can_create_new_container(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "mlops.azure.blob.list_containers_via_credential",
+        "mldna.azure.blob.list_containers_via_credential",
         lambda account_name, credential: ["datasets"],
     )
     monkeypatch.setattr("azure.identity.DefaultAzureCredential", lambda: "fake-credential")
@@ -260,7 +260,7 @@ def test_init_dvc_container_listing_can_create_new_container(tmp_path, monkeypat
     ], input="2\nbrand-new\n")
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"]["remote_url"] == "azure://brand-new/fraud-detector"
 
 
@@ -268,7 +268,7 @@ def test_init_dvc_container_listing_failure_falls_back_to_manual_prompt(tmp_path
     def _boom(account_name, credential):
         raise RuntimeError("403 Forbidden")
 
-    monkeypatch.setattr("mlops.azure.blob.list_containers_via_credential", _boom)
+    monkeypatch.setattr("mldna.azure.blob.list_containers_via_credential", _boom)
     monkeypatch.setattr("azure.identity.DefaultAzureCredential", lambda: "fake-credential")
 
     result = runner.invoke(app, [
@@ -280,7 +280,7 @@ def test_init_dvc_container_listing_failure_falls_back_to_manual_prompt(tmp_path
 
     assert result.exit_code == 0
     assert "Could not list containers" in result.output
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"]["remote_url"] == "azure://typed-container/fraud-detector"
 
 
@@ -291,6 +291,6 @@ def test_init_consumer_azure_flag_writes_azure_section_only(tmp_path):
     ])
 
     assert result.exit_code == 0
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["azure"] == {"subscription_id": "sub", "resource_group": "rg", "workspace": "ws"}
     assert "dvc" not in config

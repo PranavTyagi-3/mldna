@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
 
-from mlops.core import dvc
+from mldna.core import dvc
 
-ENV_VAR = "MLOPS_BLOB_CONNECTION_STRING"
+ENV_VAR = "MLDNA_BLOB_CONNECTION_STRING"
 
 
 def get_default_remote(workspace_dir):

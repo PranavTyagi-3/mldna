@@ -31,7 +31,7 @@ def check_run_gates(run_id):
             f"{run.data.tags.get('published_at', '?')}). Publishing the same run "
             f"twice is refused - the pkl you pointed at has identical content to "
             f"what was already published, so there's nothing new to publish. "
-            f"Fix: retrain inside a fresh `mlops.track_run()` block so the saved "
+            f"Fix: retrain inside a fresh `mldna.track_run()` block so the saved "
             f"model has new content, then publish that new run."
         )
 
@@ -46,7 +46,7 @@ def check_run_gates(run_id):
         raise RunGateError(
             f"Run {run_id} has no captured environment "
             f"(env/requirements.frozen.txt missing) - was this run created by "
-            f"mlops.track_run()?"
+            f"mldna.track_run()?"
         )
 
     return run

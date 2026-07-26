@@ -1,4 +1,4 @@
-from mlops.core.dvc import read_data_hash
+from mldna.core.dvc import read_data_hash
 
 
 def test_read_data_hash_from_real_pointer_file(producer_repo):

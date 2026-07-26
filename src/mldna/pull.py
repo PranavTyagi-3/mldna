@@ -4,10 +4,10 @@ from pathlib import Path
 
 import mlflow
 
-from mlops.core import git
-from mlops.core.config import ProjectConfig
-from mlops.core.pull import PullError, pull as pull_code_and_data
-from mlops.trackinguri import resolve_and_set_tracking_uri
+from mldna.core import git
+from mldna.core.config import ProjectConfig
+from mldna.core.pull import PullError, pull as pull_code_and_data
+from mldna.trackinguri import resolve_and_set_tracking_uri
 
 
 def _published_runs_for_commit(client, experiment_id, commit):

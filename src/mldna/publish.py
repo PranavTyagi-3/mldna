@@ -6,11 +6,11 @@ from pathlib import Path
 
 import mlflow
 
-from mlops.core import commitcheck, hashing, identity, manifest, rungates, structure
-from mlops.core.config import ProjectConfig
-from mlops.core.conversions import verify_bundle
-from mlops.core.resolve import resolve_run
-from mlops.trackinguri import resolve_and_set_tracking_uri
+from mldna.core import commitcheck, hashing, identity, manifest, rungates, structure
+from mldna.core.config import ProjectConfig
+from mldna.core.conversions import verify_bundle
+from mldna.core.resolve import resolve_run
+from mldna.trackinguri import resolve_and_set_tracking_uri
 
 
 class PublishError(Exception):
@@ -47,8 +47,8 @@ def publish(pkl_path, workspace_dir=".", format_dirs=(), confirm=None):
     config = ProjectConfig.load(workspace_dir)
     if not config.model_name:
         raise PublishError(
-            "mlops.yaml has no project.model_name set, so there's no experiment "
-            "to resolve the run from. Fix: set project.model_name in mlops.yaml."
+            "mldna.yaml has no project.model_name set, so there's no experiment "
+            "to resolve the run from. Fix: set project.model_name in mldna.yaml."
         )
     model_name = config.model_name
 

@@ -3,10 +3,10 @@ import subprocess
 import mlflow
 import pytest
 
-from mlops.core import git
-from mlops.core.commitcheck import CommitReachabilityError, check_commit_reachable
-from mlops.core.push import push
-from mlops.tracking import track_run
+from mldna.core import git
+from mldna.core.commitcheck import CommitReachabilityError, check_commit_reachable
+from mldna.core.push import push
+from mldna.tracking import track_run
 
 
 def _commit_scaffold(repo):

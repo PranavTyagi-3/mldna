@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from mlops.core.push import PushError, push
+from mldna.core.push import PushError, push
 
 
 def test_push_commits_and_pushes(producer_repo):
@@ -33,7 +33,7 @@ def test_push_second_call_is_a_noop(producer_repo):
 
 
 def test_push_fails_clearly_without_git_remote(tmp_path):
-    from mlops.core.scaffold import scaffold_producer
+    from mldna.core.scaffold import scaffold_producer
     scaffold_producer(tmp_path, "test-model")
     subprocess.run(["git", "config", "user.email", "dev@example.com"], cwd=tmp_path, check=True)
     subprocess.run(["git", "config", "user.name", "dev"], cwd=tmp_path, check=True)
@@ -48,7 +48,7 @@ def test_push_fails_clearly_without_git_remote(tmp_path):
 
 
 def test_push_fails_clearly_without_dvc_remote(tmp_path):
-    from mlops.core.scaffold import scaffold_producer
+    from mldna.core.scaffold import scaffold_producer
     scaffold_producer(tmp_path, "test-model")
     subprocess.run(["git", "config", "user.email", "dev@example.com"], cwd=tmp_path, check=True)
     subprocess.run(["git", "config", "user.name", "dev"], cwd=tmp_path, check=True)

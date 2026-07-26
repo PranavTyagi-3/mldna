@@ -12,7 +12,7 @@ class RunLockError(Exception):
 
 class RunLock:
     def __init__(self, workspace_dir):
-        self.path = Path(workspace_dir) / ".mlops" / "run.lock"
+        self.path = Path(workspace_dir) / ".mldna" / "run.lock"
 
     def is_locked(self):
         if not self.path.exists():
@@ -24,7 +24,7 @@ class RunLock:
         if self.is_locked():
             raise RunLockError(
                 f"Another run is already active in this working copy "
-                f"({self.path}). Use `mlops workspace new` to run in parallel, "
+                f"({self.path}). Use `mldna workspace new` to run in parallel, "
                 f"or wait for it to finish."
             )
         self.path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,6 +1,6 @@
 import yaml
 
-from mlops.core.scaffold import (
+from mldna.core.scaffold import (
     configure_dvc_remote,
     configure_local_dvc_remote,
     has_azure_config,
@@ -18,14 +18,14 @@ def test_creates_expected_layout(tmp_path):
     scaffold_producer(tmp_path, "fraud-detector")
 
     for name in ("dataset", "models", "outputs", "main.py", "params.yaml",
-                 "requirements.txt", ".gitignore", "mlops.yaml", ".git", ".dvc"):
+                 "requirements.txt", ".gitignore", "mldna.yaml", ".git", ".dvc"):
         assert (tmp_path / name).exists()
 
 
-def test_writes_mlops_yaml_with_model_name(tmp_path):
+def test_writes_mldna_yaml_with_model_name(tmp_path):
     scaffold_producer(tmp_path, "fraud-detector")
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["model_name"] == "fraud-detector"
     assert config["project"]["repo_role"] == "producer"
 
@@ -34,7 +34,7 @@ def test_gitignore_covers_mandatory_entries(tmp_path):
     scaffold_producer(tmp_path, "fraud-detector")
 
     gitignore = (tmp_path / ".gitignore").read_text()
-    for entry in ("models/", "outputs/", ".mlops/", "mlruns/"):
+    for entry in ("models/", "outputs/", ".mldna/", "mlruns/"):
         assert entry in gitignore
 
 
@@ -46,12 +46,12 @@ def test_dvc_add_creates_dataset_pointer(tmp_path):
 
 def test_idempotent_on_second_run(tmp_path):
     scaffold_producer(tmp_path, "fraud-detector")
-    (tmp_path / "mlops.yaml").write_text("project:\n  model_name: unchanged\n  repo_role: producer\n")
+    (tmp_path / "mldna.yaml").write_text("project:\n  model_name: unchanged\n  repo_role: producer\n")
 
     created = scaffold_producer(tmp_path, "different-name")
 
     assert created == []
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["model_name"] == "unchanged"
 
 
@@ -78,7 +78,7 @@ def test_write_azure_config_preserves_project_section(tmp_path):
 
     write_azure_config(tmp_path, "sub-id", "my-rg", "my-ws")
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["model_name"] == "fraud-detector"
     assert config["azure"] == {
         "subscription_id": "sub-id", "resource_group": "my-rg", "workspace": "my-ws",
@@ -90,11 +90,11 @@ def test_configure_dvc_remote_writes_config_and_adds_remote(tmp_path):
 
     configure_dvc_remote(tmp_path, "myaccount", "mycontainer", "fraud-detector")
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"] == {
         "remote_url": "azure://mycontainer/fraud-detector", "account_name": "myaccount",
     }
-    from mlops.core import blobauth
+    from mldna.core import blobauth
     assert blobauth.get_default_remote(tmp_path) == "azure"
 
 
@@ -104,14 +104,14 @@ def test_configure_dvc_remote_idempotent(tmp_path):
 
     configure_dvc_remote(tmp_path, "other-account", "other-container", "other-prefix")
 
-    from mlops.core import blobauth
+    from mldna.core import blobauth
     assert blobauth.get_default_remote(tmp_path) == "azure"
 
 
 def test_scaffold_consumer_creates_expected_layout(tmp_path):
     scaffold_consumer(tmp_path)
 
-    for name in ("mlops.yaml", "models.lock.yaml", "ci/mlops-fetch.snippet.yml",
+    for name in ("mldna.yaml", "models.lock.yaml", "ci/mldna-fetch.snippet.yml",
                  ".gitignore", ".git"):
         assert (tmp_path / name).exists()
 
@@ -122,15 +122,15 @@ def test_scaffold_consumer_creates_expected_layout(tmp_path):
 def test_scaffold_consumer_writes_consumer_repo_role(tmp_path):
     scaffold_consumer(tmp_path)
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["repo_role"] == "consumer"
     assert "model_name" not in config["project"]
 
 
-def test_scaffold_consumer_gitignore_protects_mlops_dir(tmp_path):
+def test_scaffold_consumer_gitignore_protects_mldna_dir(tmp_path):
     scaffold_consumer(tmp_path)
 
-    assert ".mlops/" in (tmp_path / ".gitignore").read_text()
+    assert ".mldna/" in (tmp_path / ".gitignore").read_text()
 
 
 def test_scaffold_consumer_appends_to_existing_gitignore(tmp_path):
@@ -140,7 +140,7 @@ def test_scaffold_consumer_appends_to_existing_gitignore(tmp_path):
 
     gitignore = (tmp_path / ".gitignore").read_text()
     assert "node_modules/" in gitignore
-    assert ".mlops/" in gitignore
+    assert ".mldna/" in gitignore
 
 
 def test_scaffold_consumer_idempotent(tmp_path):
@@ -158,7 +158,7 @@ def test_write_azure_tracking_uri_preserves_project_section(tmp_path):
 
     write_azure_tracking_uri(tmp_path, "azureml://pasted-endpoint")
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["model_name"] == "fraud-detector"
     assert config["azure"] == {"tracking_uri": "azureml://pasted-endpoint"}
 
@@ -177,7 +177,7 @@ def test_write_mlflow_tracking_uri_preserves_project_section(tmp_path):
 
     write_mlflow_tracking_uri(tmp_path, "http://my-mlflow-host:5000")
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["project"]["model_name"] == "fraud-detector"
     assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
 
@@ -197,10 +197,10 @@ def test_configure_local_dvc_remote_writes_config_and_adds_remote(tmp_path):
 
     configure_local_dvc_remote(tmp_path, str(local_path))
 
-    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["dvc"] == {"remote_url": str(local_path)}
     assert "account_name" not in config["dvc"]
-    from mlops.core import blobauth
+    from mldna.core import blobauth
     assert blobauth.get_default_remote(tmp_path) == "local"
     assert local_path.exists()
 
@@ -213,6 +213,6 @@ def test_configure_local_dvc_remote_idempotent(tmp_path):
 
     configure_local_dvc_remote(tmp_path, str(second_path))
 
-    from mlops.core import blobauth
+    from mldna.core import blobauth
     assert blobauth.get_default_remote(tmp_path) == "local"
     assert not second_path.exists()

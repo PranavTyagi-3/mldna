@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import mlflow
 
-from mlops.core import hashing
+from mldna.core import hashing
 
 
 class ResolveError(Exception):
@@ -49,7 +49,7 @@ def resolve_run(experiment_name, pkl_path, scan_limit=200):
             f"No tracked run matches the SHA-256 of {pkl_path}. The file was "
             f"never saved inside a tracked context (track_run/track_save/snapshot), "
             f"or was modified after saving. Fix: publish a file that was saved "
-            f"inside a `with mlops.track_run():` block."
+            f"inside a `with mldna.track_run():` block."
         )
 
     if len(matches) == 1:

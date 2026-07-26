@@ -1,4 +1,4 @@
-from mlops.core.identity import resolve_identity
+from mldna.core.identity import resolve_identity
 
 
 def test_resolves_from_git_config(git_repo):
@@ -6,8 +6,8 @@ def test_resolves_from_git_config(git_repo):
 
 
 def test_user_file_takes_priority(git_repo):
-    (git_repo / ".mlops").mkdir()
-    (git_repo / ".mlops" / "user").write_text("override@example.com\n")
+    (git_repo / ".mldna").mkdir()
+    (git_repo / ".mldna" / "user").write_text("override@example.com\n")
 
     assert resolve_identity(git_repo) == "override@example.com"
 

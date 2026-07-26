@@ -2,7 +2,7 @@ import subprocess
 
 import mlflow
 
-from mlops.core import git
+from mldna.core import git
 
 
 class CommitReachabilityError(Exception):

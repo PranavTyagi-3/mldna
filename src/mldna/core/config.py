@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from mlops.core.discovery import DEFAULT_EXCLUDES, DEFAULT_MODEL_GLOBS
+from mldna.core.discovery import DEFAULT_EXCLUDES, DEFAULT_MODEL_GLOBS
 
 
 @dataclass
@@ -46,7 +46,7 @@ class ProjectConfig:
 
     @classmethod
     def load(cls, workspace_dir):
-        path = Path(workspace_dir) / "mlops.yaml"
+        path = Path(workspace_dir) / "mldna.yaml"
         if not path.exists():
             return cls()
         return cls.from_yaml(path)

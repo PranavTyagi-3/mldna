@@ -3,7 +3,7 @@ from pathlib import Path
 
 import mlflow
 
-from mlops.core.config import ProjectConfig
+from mldna.core.config import ProjectConfig
 
 AZURE_KEYS = ("subscription_id", "resource_group", "workspace")
 
@@ -13,7 +13,7 @@ class TrackingUriError(Exception):
 
 
 def _load_config(workspace_dir):
-    config_path = Path(workspace_dir) / "mlops.yaml"
+    config_path = Path(workspace_dir) / "mldna.yaml"
     if not config_path.exists():
         return None
     return ProjectConfig.from_yaml(config_path)
@@ -27,7 +27,7 @@ def _make_stdout_unicode_safe():
     # status REST call, so an unhandled crash here left real runs stuck
     # RUNNING forever (confirmed live against mlops-spike-ws). errors=
     # "replace" degrades to "?" instead of crashing; it never affects the
-    # plain-ASCII output mlops itself prints.
+    # plain-ASCII output mldna itself prints.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
 
@@ -40,7 +40,7 @@ def resolve_and_set_tracking_uri(workspace_dir):
 
     if has_mlflow_section and has_azure_section:
         raise TrackingUriError(
-            "mlops.yaml has both mlflow: and azure: sections - only one tracking "
+            "mldna.yaml has both mlflow: and azure: sections - only one tracking "
             "source may be configured. Fix: remove the mlflow: section to use "
             "Azure ML, or remove the azure: section to use the remote MLflow server."
         )
@@ -48,7 +48,7 @@ def resolve_and_set_tracking_uri(workspace_dir):
     if has_mlflow_section:
         if not config.mlflow_tracking_uri:
             raise TrackingUriError(
-                "mlops.yaml has an mlflow: section but no tracking_uri key. "
+                "mldna.yaml has an mlflow: section but no tracking_uri key. "
                 "Fix: add `tracking_uri: \"http://host:port\"` under mlflow:, or "
                 "remove the mlflow: section entirely to use local tracking."
             )
@@ -71,13 +71,13 @@ def resolve_and_set_tracking_uri(workspace_dir):
         # azure-ai-ml import, a missing azureml-mlflow doesn't fail until the
         # *first real mlflow call* (mlflow.start_run(), etc.), deep inside
         # mlflow's own store-registry code, as an
-        # UnsupportedModelRegistryStoreURIException that never mentions mlops
+        # UnsupportedModelRegistryStoreURIException that never mentions mldna
         # or the fix at all. Fail here instead, at config-resolution time.
         raise TrackingUriError(
-            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mlops[azure]" ({e})'
+            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
         )
 
-    from mlops.azure.auth import resolve_aml_credential
+    from mldna.azure.auth import resolve_aml_credential
 
     if config.tracking_uri:
         # Service Principal flow: the endpoint was pasted directly, so there's
@@ -91,16 +91,16 @@ def resolve_and_set_tracking_uri(workspace_dir):
     missing = [key for key in AZURE_KEYS if not getattr(config, key)]
     if missing:
         raise TrackingUriError(
-            f"mlops.yaml has an azure: section but is missing {', '.join(missing)} "
+            f"mldna.yaml has an azure: section but is missing {', '.join(missing)} "
             f"(or a single tracking_uri key). Add the missing key(s), or remove the "
             f"azure: section entirely to use local tracking."
         )
 
     try:
-        from mlops.azure.tracking import bootstrap_tracking_uri
+        from mldna.azure.tracking import bootstrap_tracking_uri
     except ImportError as e:
         raise TrackingUriError(
-            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mlops[azure]" ({e})'
+            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
         )
 
     credential, mode = resolve_aml_credential(workspace_dir)

@@ -3,11 +3,11 @@ import json
 import mlflow
 import pytest
 
-from mlops.core.conversions import ConversionError, verify_bundle
-from mlops.core.hashing import sha256_file
-from mlops.core.lock import RunLock, RunLockError
-from mlops.core.resolve import ResolveError
-from mlops.tracking import track_convert, track_run
+from mldna.core.conversions import ConversionError, verify_bundle
+from mldna.core.hashing import sha256_file
+from mldna.core.lock import RunLock, RunLockError
+from mldna.core.resolve import ResolveError
+from mldna.tracking import track_convert, track_run
 
 MODEL_BYTES = b"trained model bytes"
 

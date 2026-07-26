@@ -1,9 +1,9 @@
 import subprocess
 from pathlib import Path
 
-from mlops.core import blobauth, dvc, git
-from mlops.core.config import ProjectConfig
-from mlops.core.lock import RunLock
+from mldna.core import blobauth, dvc, git
+from mldna.core.config import ProjectConfig
+from mldna.core.lock import RunLock
 
 
 class PullError(Exception):
@@ -23,8 +23,8 @@ def pull(workspace_dir):
     config = ProjectConfig.load(workspace_dir)
     if config.repo_role == "consumer":
         raise PullError(
-            "This is a consumer repo - `mlops pull` only syncs producer "
-            "code+data (git+dvc). Fix: use `mlops fetch` to pull pinned "
+            "This is a consumer repo - `mldna pull` only syncs producer "
+            "code+data (git+dvc). Fix: use `mldna fetch` to pull pinned "
             "model versions instead."
         )
 
@@ -34,7 +34,7 @@ def pull(workspace_dir):
             "A training run is active in this working copy "
             f"({lock.path}). Pulling now could change dataset/ or code files "
             "a live run depends on mid-run. Fix: wait for the run to finish, "
-            "or use `mlops workspace new` to pull in a separate worktree."
+            "or use `mldna workspace new` to pull in a separate worktree."
         )
 
     branch = git.get_branch(workspace_dir)

@@ -3,8 +3,8 @@ import subprocess
 import mlflow
 import pytest
 
-from mlops.core.rungates import RunGateError, check_run_gates
-from mlops.tracking import track_run
+from mldna.core.rungates import RunGateError, check_run_gates
+from mldna.tracking import track_run
 
 
 def _commit_scaffold(repo):

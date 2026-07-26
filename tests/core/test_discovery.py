@@ -1,4 +1,4 @@
-from mlops.core import discovery
+from mldna.core import discovery
 
 
 def test_snapshot_and_diff_detects_new_file(tmp_path):

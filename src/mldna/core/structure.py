@@ -24,7 +24,7 @@ def check_structure(pkl_path, format_dirs, require_formats=()):
     if missing:
         raise StructureError(
             f"Missing required format(s): {', '.join(sorted(missing))}. "
-            f"mlops.yaml requires {sorted(require_formats)}."
+            f"mldna.yaml requires {sorted(require_formats)}."
         )
 
     all_files = [pkl_path] + [f for d in format_dirs for f in d.rglob("*") if f.is_file()]

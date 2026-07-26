@@ -3,7 +3,7 @@ GIT_BRANCH = "git_branch"
 DVC_DATA_HASH = "dvc_data_hash"
 DIRTY = "dirty"
 USER = "user"
-MLOPS_VERSION = "mlops_version"
+MLDNA_VERSION = "mldna_version"
 DOCKER_IMAGE_DIGEST = "docker_image_digest"
 SAVE_CONTEXT = "save_context"
 

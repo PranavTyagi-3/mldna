@@ -2,10 +2,10 @@ import subprocess
 
 from typer.testing import CliRunner
 
-from mlops.cli.main import app
-from mlops.core.push import push as core_push
-from mlops.publish import publish
-from mlops.tracking import track_run
+from mldna.cli.main import app
+from mldna.core.push import push as core_push
+from mldna.publish import publish
+from mldna.tracking import track_run
 
 runner = CliRunner()
 
@@ -47,4 +47,4 @@ def test_pull_cli_fails_in_consumer_repo(tmp_path):
     result = runner.invoke(app, ["pull", "--dir", str(tmp_path)])
 
     assert result.exit_code == 1
-    assert "mlops fetch" in result.output
+    assert "mldna fetch" in result.output

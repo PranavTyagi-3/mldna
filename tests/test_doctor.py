@@ -1,7 +1,7 @@
 import subprocess
 
-from mlops.core.lock import RunLock
-from mlops.doctor import (
+from mldna.core.lock import RunLock
+from mldna.doctor import (
     check_aml_auth,
     check_blob_auth,
     check_committed_secrets,
@@ -47,7 +47,7 @@ def test_check_run_lock_passes_when_held_by_live_process(producer_repo):
 
 def test_check_run_lock_fails_when_stale(producer_repo):
     import json
-    lock_path = producer_repo / ".mlops" / "run.lock"
+    lock_path = producer_repo / ".mldna" / "run.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.write_text(json.dumps({"pid": 999999999, "run_id": None, "started_at": ""}))
 
@@ -96,7 +96,7 @@ def test_check_aml_auth_passes_when_not_configured(producer_repo):
 
 
 def test_check_aml_auth_fails_when_incomplete(producer_repo):
-    from mlops.core.scaffold import write_azure_config
+    from mldna.core.scaffold import write_azure_config
     write_azure_config(producer_repo, "sub", "rg", None)
 
     result = check_aml_auth(producer_repo)
@@ -106,7 +106,7 @@ def test_check_aml_auth_fails_when_incomplete(producer_repo):
 
 
 def test_check_aml_auth_passes_with_reachable_mlflow_server(producer_repo, monkeypatch):
-    from mlops.core.scaffold import write_mlflow_tracking_uri
+    from mldna.core.scaffold import write_mlflow_tracking_uri
     write_mlflow_tracking_uri(producer_repo, "http://my-mlflow-host:5000")
     monkeypatch.setattr(
         "mlflow.tracking.MlflowClient.search_experiments",
@@ -120,7 +120,7 @@ def test_check_aml_auth_passes_with_reachable_mlflow_server(producer_repo, monke
 
 
 def test_check_aml_auth_fails_when_mlflow_server_unreachable(producer_repo, monkeypatch):
-    from mlops.core.scaffold import write_mlflow_tracking_uri
+    from mldna.core.scaffold import write_mlflow_tracking_uri
     write_mlflow_tracking_uri(producer_repo, "http://my-mlflow-host:5000")
 
     def boom(self, max_results=None):
@@ -135,7 +135,7 @@ def test_check_aml_auth_fails_when_mlflow_server_unreachable(producer_repo, monk
 
 
 def test_check_aml_auth_fails_when_both_mlflow_and_azure_configured(producer_repo):
-    from mlops.core.scaffold import write_azure_config, write_mlflow_tracking_uri
+    from mldna.core.scaffold import write_azure_config, write_mlflow_tracking_uri
     write_mlflow_tracking_uri(producer_repo, "http://my-mlflow-host:5000")
     write_azure_config(producer_repo, "sub", "rg", "ws")
 

@@ -3,12 +3,12 @@ import subprocess
 import mlflow
 import pytest
 
-from mlops.core.lockfile import LockfileError
-from mlops.core.manifest import ManifestError
-from mlops.core.push import push as core_push
-from mlops.fetch import FetchError, fetch
-from mlops.publish import publish
-from mlops.tracking import track_convert, track_run
+from mldna.core.lockfile import LockfileError
+from mldna.core.manifest import ManifestError
+from mldna.core.push import push as core_push
+from mldna.fetch import FetchError, fetch
+from mldna.publish import publish
+from mldna.tracking import track_convert, track_run
 
 
 def _commit_scaffold(repo):
@@ -72,7 +72,7 @@ def test_fetch_pkl_only_happy_path(producer_repo):
 
     assert fetched == [{"model_name": "test-model", "version": str(result["version"]), "skipped": False}]
     assert (dest / "model.pkl").read_bytes() == pkl.read_bytes()
-    assert (dest / ".mlops-version").read_text().strip() == str(result["version"])
+    assert (dest / ".mldna-version").read_text().strip() == str(result["version"])
 
 
 def test_fetch_converted_format_happy_path(producer_repo):
@@ -103,7 +103,7 @@ def test_fetch_idempotent_skip_avoids_redownload(producer_repo, monkeypatch):
     first = fetch(workspace_dir=producer_repo)
     assert first[0]["skipped"] is False
 
-    import mlops.fetch as fetch_module
+    import mldna.fetch as fetch_module
 
     def _boom(*args, **kwargs):
         raise AssertionError("subtree should not be re-downloaded on an idempotent fetch")
@@ -134,4 +134,4 @@ def test_fetch_version_bump_refetches(producer_repo):
 
     assert fetched[0]["skipped"] is False
     assert (dest / "model.pkl").read_bytes() == b"v2 bytes"
-    assert (dest / ".mlops-version").read_text().strip() == str(result2["version"])
+    assert (dest / ".mldna-version").read_text().strip() == str(result2["version"])

@@ -3,10 +3,10 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from mlops.core import blobauth, dvc
-from mlops.core.lock import RunLock
-from mlops.core.scaffold import GITIGNORE, has_azure_config, has_mlflow_config
-from mlops.trackinguri import TrackingUriError, resolve_and_set_tracking_uri
+from mldna.core import blobauth, dvc
+from mldna.core.lock import RunLock
+from mldna.core.scaffold import GITIGNORE, has_azure_config, has_mlflow_config
+from mldna.trackinguri import TrackingUriError, resolve_and_set_tracking_uri
 
 SECRET_PATTERNS = (
     "AccountKey=", "SharedAccessSignature=", "sig=", "client_secret", "AZURE_CLIENT_SECRET=",
@@ -37,7 +37,7 @@ def check_tools():
 def check_gitignore(workspace_dir):
     path = Path(workspace_dir) / ".gitignore"
     if not path.exists():
-        return _check("gitignore", False, ".gitignore missing. Fix: mlops init")
+        return _check("gitignore", False, ".gitignore missing. Fix: mldna init")
     text = path.read_text()
     missing = [entry for entry in MANDATORY_GITIGNORE_ENTRIES if entry not in text]
     if missing:
@@ -98,7 +98,7 @@ def check_committed_secrets(workspace_dir):
             "committed_secrets", False,
             f"Possible secrets in committed files: {', '.join(hits)}. "
             f"Fix: remove them, rotate the secret, and use env vars / "
-            f"mlops configure aml-auth / mlops configure blob-auth instead."
+            f"mldna configure aml-auth / mldna configure blob-auth instead."
         )
     return _check("committed_secrets", True, "No secret patterns found in committed files.")
 

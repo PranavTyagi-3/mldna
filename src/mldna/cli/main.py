@@ -1,18 +1,18 @@
 import typer
 
-from mlops import __version__
-from mlops.azure import auth as aml_auth
-from mlops.azure import blob as aml_blob
-from mlops.core import blobauth
-from mlops.core.commitcheck import CommitReachabilityError
-from mlops.core.conversions import ConversionError
-from mlops.core.lockfile import LockfileError
-from mlops.core.manifest import ManifestError
-from mlops.core.pull import PullError
-from mlops.core.push import PushError, push as core_push
-from mlops.core.resolve import ResolveError
-from mlops.core.rungates import RunGateError
-from mlops.core.scaffold import (
+from mldna import __version__
+from mldna.azure import auth as aml_auth
+from mldna.azure import blob as aml_blob
+from mldna.core import blobauth
+from mldna.core.commitcheck import CommitReachabilityError
+from mldna.core.conversions import ConversionError
+from mldna.core.lockfile import LockfileError
+from mldna.core.manifest import ManifestError
+from mldna.core.pull import PullError
+from mldna.core.push import PushError, push as core_push
+from mldna.core.resolve import ResolveError
+from mldna.core.rungates import RunGateError
+from mldna.core.scaffold import (
     configure_dvc_remote,
     configure_local_dvc_remote,
     has_azure_config,
@@ -24,13 +24,13 @@ from mlops.core.scaffold import (
     write_azure_tracking_uri,
     write_mlflow_tracking_uri,
 )
-from mlops.core.structure import StructureError
-from mlops.doctor import run_doctor
-from mlops.fetch import FetchError, fetch as core_fetch
-from mlops.publish import PublishError, publish as core_publish
-from mlops.pull import pull as core_pull
-from mlops.runs import RunsError, list_runs
-from mlops.trackinguri import TrackingUriError
+from mldna.core.structure import StructureError
+from mldna.doctor import run_doctor
+from mldna.fetch import FetchError, fetch as core_fetch
+from mldna.publish import PublishError, publish as core_publish
+from mldna.pull import pull as core_pull
+from mldna.runs import RunsError, list_runs
+from mldna.trackinguri import TrackingUriError
 
 PUBLISH_ERRORS = (
     PublishError, ResolveError, RunGateError, CommitReachabilityError,
@@ -39,7 +39,7 @@ PUBLISH_ERRORS = (
 FETCH_ERRORS = (FetchError, LockfileError, ManifestError, TrackingUriError)
 
 app = typer.Typer(
-    name="mlops",
+    name="mldna",
     help="A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned consumption.",
 )
 
@@ -57,7 +57,7 @@ def _version_callback(value: bool) -> None:
 def main(
     version: bool = typer.Option(
         False, "--version", callback=_version_callback, is_eager=True,
-        help="Show the mlops version and exit.",
+        help="Show the mldna version and exit.",
     ),
 ) -> None:
     pass
@@ -101,21 +101,21 @@ def _configure_azure_tracking(
     dir, auth_mode, tracking_uri, tenant_id, client_id, client_secret,
     subscription_id, resource_group, workspace,
 ):
-    """Writes mlops.yaml's azure: section and (for service-principal) the local
+    """Writes mldna.yaml's azure: section and (for service-principal) the local
     auth file. Callers decide *whether* to call this - this function only
     decides *how*, prompting for whatever wasn't already given."""
     # Fully-specified via flags: skip straight to writing, matching today's
     # non-interactive behavior exactly - no auth-mode prompt needed either.
     if subscription_id and resource_group and workspace:
         write_azure_config(dir, subscription_id, resource_group, workspace)
-        typer.echo("Wrote azure: section to mlops.yaml")
+        typer.echo("Wrote azure: section to mldna.yaml")
         return
     if tracking_uri:
         write_azure_tracking_uri(dir, tracking_uri)
-        typer.echo("Wrote azure: section to mlops.yaml (tracking_uri)")
+        typer.echo("Wrote azure: section to mldna.yaml (tracking_uri)")
         if tenant_id and client_id and client_secret:
             aml_auth.write_local_auth(dir, tenant_id, client_id, client_secret)
-            typer.echo(f"Saved to .mlops/{aml_auth.AUTH_FILE}")
+            typer.echo(f"Saved to .mldna/{aml_auth.AUTH_FILE}")
         return
 
     if not auth_mode:
@@ -131,9 +131,9 @@ def _configure_azure_tracking(
         client_secret = client_secret or typer.prompt("Client secret", hide_input=True)
         tracking_uri = typer.prompt("Azure ML MLflow tracking endpoint (Studio -> Consume tab)")
         write_azure_tracking_uri(dir, tracking_uri)
-        typer.echo("Wrote azure: section to mlops.yaml (tracking_uri)")
+        typer.echo("Wrote azure: section to mldna.yaml (tracking_uri)")
         aml_auth.write_local_auth(dir, tenant_id, client_id, client_secret)
-        typer.echo(f"Saved to .mlops/{aml_auth.AUTH_FILE}")
+        typer.echo(f"Saved to .mldna/{aml_auth.AUTH_FILE}")
         return
 
     # aad - discover the workspace unless it was already given explicitly
@@ -144,11 +144,11 @@ def _configure_azure_tracking(
         typer.echo("Looking up AML workspaces you have access to...")
         try:
             from azure.identity import DefaultAzureCredential
-            from mlops.azure.tracking import list_workspaces
+            from mldna.azure.tracking import list_workspaces
         except ImportError:
             typer.echo(
                 "Azure ML workspace discovery needs the `azure` extra. "
-                'Fix: pip install "mlops[azure]"',
+                'Fix: pip install "mldna[azure]"',
                 err=True,
             )
             raise typer.Exit(1)
@@ -164,16 +164,16 @@ def _configure_azure_tracking(
         workspace, resource_group = found[index]
 
     write_azure_config(dir, subscription_id, resource_group, workspace)
-    typer.echo("Wrote azure: section to mlops.yaml")
+    typer.echo("Wrote azure: section to mldna.yaml")
 
 
 def _configure_mlflow_tracking(dir, mlflow_uri):
-    """Writes mlops.yaml's mlflow: section - a plain, non-Azure MLflow tracking
-    server URL. No mlops-managed auth: mlflow-skinny itself reads
+    """Writes mldna.yaml's mlflow: section - a plain, non-Azure MLflow tracking
+    server URL. No mldna-managed auth: mlflow-skinny itself reads
     MLFLOW_TRACKING_USERNAME/PASSWORD/TOKEN natively for servers that need it."""
     mlflow_uri = mlflow_uri or typer.prompt("MLflow tracking server URL (e.g. http://host:5000)")
     write_mlflow_tracking_uri(dir, mlflow_uri)
-    typer.echo("Wrote mlflow: section to mlops.yaml")
+    typer.echo("Wrote mlflow: section to mldna.yaml")
 
 
 def _configure_dvc(
@@ -203,7 +203,7 @@ def _configure_dvc(
     if dvc_backend == "skip":
         typer.echo(
             "Skipped DVC remote setup - run `dvc remote add -d <name> <url>` "
-            "manually when you're ready; `mlops push` will explain how until then."
+            "manually when you're ready; `mldna push` will explain how until then."
         )
         return False
 
@@ -248,7 +248,7 @@ def _configure_dvc(
         except ImportError:
             typer.echo(
                 "An Azure Blob DVC remote needs the `azure` extra. "
-                'Fix: pip install "mlops[azure]"',
+                'Fix: pip install "mldna[azure]"',
                 err=True,
             )
             raise typer.Exit(1)
@@ -260,7 +260,7 @@ def _configure_dvc(
         "Folder/prefix (a container may be shared across models)", default=model_name
     )
     configure_dvc_remote(dir, dvc_account, dvc_container, dvc_prefix)
-    typer.echo("Wrote dvc: section to mlops.yaml and configured the DVC remote")
+    typer.echo("Wrote dvc: section to mldna.yaml and configured the DVC remote")
 
     if blob_auth_mode == "connection-string":
         remote_name = blobauth.get_default_remote(dir)
@@ -314,7 +314,7 @@ def init(
         if mlflow_flag_given and not has_mlflow_config(dir):
             _configure_mlflow_tracking(dir, mlflow_uri)
         elif mlflow_flag_given:
-            typer.echo("mlops.yaml already has an mlflow: section - not re-prompting.")
+            typer.echo("mldna.yaml already has an mlflow: section - not re-prompting.")
 
         if azure_flag_given and not has_azure_config(dir):
             _configure_azure_tracking(
@@ -323,10 +323,10 @@ def init(
             )
             typer.echo(
                 "If this machine doesn't have az login access, run "
-                "`mlops configure aml-auth` to set a shared secret."
+                "`mldna configure aml-auth` to set a shared secret."
             )
         elif azure_flag_given:
-            typer.echo("mlops.yaml already has an azure: section - not re-prompting.")
+            typer.echo("mldna.yaml already has an azure: section - not re-prompting.")
         return
 
     if model_name is None:
@@ -341,7 +341,7 @@ def init(
     configured_azure = False
     if has_azure_config(dir) or has_mlflow_config(dir):
         typer.echo(
-            "mlops.yaml already has a tracking source configured (azure: or "
+            "mldna.yaml already has a tracking source configured (azure: or "
             "mlflow: section) - not re-prompting."
         )
     else:
@@ -367,7 +367,7 @@ def init(
 
     configured_dvc_azure = False
     if has_dvc_config(dir):
-        typer.echo("mlops.yaml already has a dvc: section - not re-prompting.")
+        typer.echo("mldna.yaml already has a dvc: section - not re-prompting.")
     else:
         configured_dvc_azure = _configure_dvc(
             dir, model_name, dvc_backend, dvc_local_path,
@@ -378,7 +378,7 @@ def init(
     if configured_azure or configured_dvc_azure:
         typer.echo(
             "If this machine doesn't have az login access, run "
-            "`mlops configure aml-auth` and/or `mlops configure blob-auth` to set "
+            "`mldna configure aml-auth` and/or `mldna configure blob-auth` to set "
             "shared secrets."
         )
 
@@ -528,7 +528,7 @@ def configure_aml_auth(
         if client_secret is None:
             client_secret = typer.prompt("Client secret", hide_input=True)
         aml_auth.write_local_auth(dir, tenant_id, client_id, client_secret)
-        typer.echo(f"Saved to .mlops/{aml_auth.AUTH_FILE}")
+        typer.echo(f"Saved to .mldna/{aml_auth.AUTH_FILE}")
 
     try:
         _, mode = aml_auth.resolve_aml_credential(dir)

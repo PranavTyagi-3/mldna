@@ -21,16 +21,16 @@ and a real Azure ML workspace).
 - **Consumer CLI**: `init --consumer` (lockfile + CI snippet scaffold),
   `fetch` (exact pinned versions only — manifest-first, checksum-verified,
   atomic swap, idempotent, hard-fails on a `recalled` version).
-- **Python API**: `mlops.track_run()` (context manager/decorator: run lock
+- **Python API**: `mldna.track_run()` (context manager/decorator: run lock
   with stale-PID reclaim, clean-tree gate with labeled `allow_dirty` escape
   hatch, identity resolution, model-file discovery and per-file SHA-256 tags,
-  `pip freeze` capture) and `mlops.track_convert()` (provenance-links
+  `pip freeze` capture) and `mldna.track_convert()` (provenance-links
   converted formats to their source model; numerical equivalence is
   deliberately not claimed).
-- **Three tracking backends**, switched by `mlops.yaml` alone: local file
+- **Three tracking backends**, switched by `mldna.yaml` alone: local file
   store (default, zero config), any plain MLflow server via
   `mlflow.tracking_uri`, or an Azure ML workspace.
-- **Azure adapter** (`pip install "mlops[azure]"`): AAD and service-principal
+- **Azure adapter** (`pip install "mldna[azure]"`): AAD and service-principal
   shared-secret auth on both the tracking and DVC-blob planes
   (`configure aml-auth` / `configure blob-auth`), workspace and blob-container
   discovery during `init`.

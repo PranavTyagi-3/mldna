@@ -2,8 +2,8 @@ import subprocess
 
 import pytest
 
-from mlops.core.resolve import ResolveError, resolve_run
-from mlops.tracking import track_run
+from mldna.core.resolve import ResolveError, resolve_run
+from mldna.tracking import track_run
 
 MODEL_BYTES = b"identical model bytes for hash matching"
 

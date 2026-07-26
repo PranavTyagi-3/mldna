@@ -13,17 +13,17 @@ def git_repo(tmp_path):
     run(tmp_path, "init", "-q")
     run(tmp_path, "config", "user.email", "dev@example.com")
     run(tmp_path, "config", "user.name", "dev")
-    (tmp_path / ".gitignore").write_text("models/\noutputs/\n.mlops/\nmlruns/\n")
+    (tmp_path / ".gitignore").write_text("models/\noutputs/\n.mldna/\nmlruns/\n")
     (tmp_path / "README.md").write_text("hello\n")
-    (tmp_path / "mlops.yaml").write_text("project:\n  model_name: test-model\n  repo_role: producer\n")
-    run(tmp_path, "add", ".gitignore", "README.md", "mlops.yaml")
+    (tmp_path / "mldna.yaml").write_text("project:\n  model_name: test-model\n  repo_role: producer\n")
+    run(tmp_path, "add", ".gitignore", "README.md", "mldna.yaml")
     run(tmp_path, "commit", "-q", "-m", "initial commit")
     return tmp_path
 
 
 @pytest.fixture
 def producer_repo(tmp_path):
-    from mlops.core.scaffold import scaffold_producer
+    from mldna.core.scaffold import scaffold_producer
 
     origin = tmp_path / "origin.git"
     subprocess.run(["git", "init", "--bare", "-q", str(origin)], check=True, capture_output=True)

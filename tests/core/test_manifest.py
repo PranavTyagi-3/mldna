@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from mlops.core.hashing import sha256_file
-from mlops.core.manifest import ManifestError, build_manifest, resolve_format, verify_format_files
-from mlops.core.resolve import ResolvedRun
+from mldna.core.hashing import sha256_file
+from mldna.core.manifest import ManifestError, build_manifest, resolve_format, verify_format_files
+from mldna.core.resolve import ResolvedRun
 
 
 def _fake_run(tags):

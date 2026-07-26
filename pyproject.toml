@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mlops"
+name = "mldna"
 version = "0.1.0"
 description = "A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned model consumption"
 readme = "README.md"
@@ -26,11 +26,11 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    # mlflow-skinny, not full mlflow: mlops only ever acts as an mlflow *client*
+    # mlflow-skinny, not full mlflow: mldna only ever acts as an mlflow *client*
     # (local file:-store tracking, or Azure ML's own hosted server) — it never
     # runs `mlflow server` itself. Full mlflow bundles a Flask tracking server
     # plus scikit-learn/pandas/matplotlib/docker/sqlalchemy for flavors and UI
-    # features mlops never touches; azureml-mlflow itself only ever requires
+    # features mldna never touches; azureml-mlflow itself only ever requires
     # mlflow-skinny (verified via its own package metadata), so this pin doesn't
     # cost anything on the Azure path either.
     #
@@ -74,10 +74,10 @@ dev = [
 ]
 
 [project.scripts]
-mlops = "mlops.cli.main:app"
+mldna = "mldna.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mlops"]
+packages = ["src/mldna"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

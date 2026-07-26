@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from mlops.azure.tracking import list_workspaces
+from mldna.azure.tracking import list_workspaces
 
 
 def test_list_workspaces_lists_by_subscription_scope(monkeypatch):
@@ -20,7 +20,7 @@ def test_list_workspaces_lists_by_subscription_scope(monkeypatch):
             calls["subscription_id"] = subscription_id
             self.workspaces = FakeWorkspaceOperations()
 
-    monkeypatch.setattr("mlops.azure.tracking.MLClient", FakeMLClient)
+    monkeypatch.setattr("mldna.azure.tracking.MLClient", FakeMLClient)
 
     result = list_workspaces("sub-123", "fake-credential")
 
@@ -39,6 +39,6 @@ def test_list_workspaces_empty(monkeypatch):
         def __init__(self, credential, subscription_id):
             self.workspaces = FakeWorkspaceOperations()
 
-    monkeypatch.setattr("mlops.azure.tracking.MLClient", FakeMLClient)
+    monkeypatch.setattr("mldna.azure.tracking.MLClient", FakeMLClient)
 
     assert list_workspaces("sub-123", "fake-credential") == []

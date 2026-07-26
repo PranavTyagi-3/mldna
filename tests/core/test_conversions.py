@@ -1,7 +1,7 @@
 import pytest
 
-from mlops.core.conversions import ConversionError, build_entries, verify_bundle
-from mlops.core.hashing import sha256_file
+from mldna.core.conversions import ConversionError, build_entries, verify_bundle
+from mldna.core.hashing import sha256_file
 
 PKL_SHA = "a" * 64
 OTHER_PKL_SHA = "b" * 64

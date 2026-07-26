@@ -1,6 +1,6 @@
 import hashlib
 
-from mlops.core.hashing import sha256_file
+from mldna.core.hashing import sha256_file
 
 
 def test_sha256_file_matches_hashlib(tmp_path):

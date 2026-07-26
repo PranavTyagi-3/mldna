@@ -3,17 +3,17 @@ from pathlib import Path
 
 import yaml
 
-from mlops import __version__
-from mlops.core import blobauth, dvc
+from mldna import __version__
+from mldna.core import blobauth, dvc
 
-GITIGNORE = "models/\noutputs/\n.mlops/\nmlruns/\n.dvc/cache/\n"
+GITIGNORE = "models/\noutputs/\n.mldna/\nmlruns/\n.dvc/cache/\n"
 
-MAIN_PY = "import mlops\n\nwith mlops.track_run():\n    pass\n"
+MAIN_PY = "import mldna\n\nwith mldna.track_run():\n    pass\n"
 
-CONSUMER_GITIGNORE_ENTRY = ".mlops/\n"
+CONSUMER_GITIGNORE_ENTRY = ".mldna/\n"
 
 LOCKFILE_STUB = (
-    "# Pin exact registry versions here - `mlops fetch` resolves ONLY these\n"
+    "# Pin exact registry versions here - `mldna fetch` resolves ONLY these\n"
     "# exact versions, never latest/stage. Example:\n"
     "#\n"
     "# fraud-detector:\n"
@@ -24,7 +24,7 @@ LOCKFILE_STUB = (
 
 # Copy-paste starting point only - the validated CI gate (pin-exists,
 # format+provenance present, recalled fails, staleness warns) is a separate,
-# later piece. This just shows the service-principal auth leg so `mlops
+# later piece. This just shows the service-principal auth leg so `mldna
 # fetch` needs zero personal az login in CI.
 CI_SNIPPET = (
     "- name: Fetch pinned models\n"
@@ -32,7 +32,7 @@ CI_SNIPPET = (
     "    AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}\n"
     "    AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}\n"
     "    AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}\n"
-    "  run: mlops fetch\n"
+    "  run: mldna fetch\n"
 )
 
 
@@ -56,9 +56,9 @@ def scaffold_producer(project_dir, model_name):
     for name, content in (
         ("main.py", MAIN_PY),
         ("params.yaml", ""),
-        ("requirements.txt", f"mlops=={__version__}\n"),
+        ("requirements.txt", f"mldna=={__version__}\n"),
         (".gitignore", GITIGNORE),
-        ("mlops.yaml", yaml.dump(
+        ("mldna.yaml", yaml.dump(
             {"project": {"model_name": model_name, "repo_role": "producer"}},
             sort_keys=False,
         )),
@@ -93,14 +93,14 @@ def scaffold_consumer(project_dir):
     if not gitignore_path.exists():
         gitignore_path.write_text(CONSUMER_GITIGNORE_ENTRY)
         created.append(str(gitignore_path))
-    elif ".mlops/" not in gitignore_path.read_text():
+    elif ".mldna/" not in gitignore_path.read_text():
         with gitignore_path.open("a") as f:
             f.write(CONSUMER_GITIGNORE_ENTRY)
 
     for name, content in (
-        ("mlops.yaml", yaml.dump({"project": {"repo_role": "consumer"}}, sort_keys=False)),
+        ("mldna.yaml", yaml.dump({"project": {"repo_role": "consumer"}}, sort_keys=False)),
         ("models.lock.yaml", LOCKFILE_STUB),
-        ("ci/mlops-fetch.snippet.yml", CI_SNIPPET),
+        ("ci/mldna-fetch.snippet.yml", CI_SNIPPET),
     ):
         path = project_dir / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -115,7 +115,7 @@ def scaffold_consumer(project_dir):
 
 
 def has_azure_config(project_dir):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     if not config_path.exists():
         return False
     data = yaml.safe_load(config_path.read_text()) or {}
@@ -123,7 +123,7 @@ def has_azure_config(project_dir):
 
 
 def write_azure_config(project_dir, subscription_id, resource_group, workspace):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     data = yaml.safe_load(config_path.read_text()) or {}
     data["azure"] = {
         "subscription_id": subscription_id,
@@ -134,14 +134,14 @@ def write_azure_config(project_dir, subscription_id, resource_group, workspace):
 
 
 def write_azure_tracking_uri(project_dir, tracking_uri):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     data = yaml.safe_load(config_path.read_text()) or {}
     data["azure"] = {"tracking_uri": tracking_uri}
     config_path.write_text(yaml.dump(data, sort_keys=False))
 
 
 def has_mlflow_config(project_dir):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     if not config_path.exists():
         return False
     data = yaml.safe_load(config_path.read_text()) or {}
@@ -149,14 +149,14 @@ def has_mlflow_config(project_dir):
 
 
 def write_mlflow_tracking_uri(project_dir, tracking_uri):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     data = yaml.safe_load(config_path.read_text()) or {}
     data["mlflow"] = {"tracking_uri": tracking_uri}
     config_path.write_text(yaml.dump(data, sort_keys=False))
 
 
 def has_dvc_config(project_dir):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     if not config_path.exists():
         return False
     data = yaml.safe_load(config_path.read_text()) or {}
@@ -164,7 +164,7 @@ def has_dvc_config(project_dir):
 
 
 def configure_dvc_remote(project_dir, account_name, container, prefix, remote_name="azure"):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     data = yaml.safe_load(config_path.read_text()) or {}
     remote_url = f"azure://{container}/{prefix}"
     data["dvc"] = {"remote_url": remote_url, "account_name": account_name}
@@ -176,7 +176,7 @@ def configure_dvc_remote(project_dir, account_name, container, prefix, remote_na
 
 
 def configure_local_dvc_remote(project_dir, path, remote_name="local"):
-    config_path = Path(project_dir) / "mlops.yaml"
+    config_path = Path(project_dir) / "mldna.yaml"
     data = yaml.safe_load(config_path.read_text()) or {}
     data["dvc"] = {"remote_url": str(path)}
     config_path.write_text(yaml.dump(data, sort_keys=False))

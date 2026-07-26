@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def _from_user_file(workspace_dir):
-    path = Path(workspace_dir) / ".mlops" / "user"
+    path = Path(workspace_dir) / ".mldna" / "user"
     if path.exists():
         value = path.read_text().strip()
         return value or None

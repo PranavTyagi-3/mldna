@@ -1,6 +1,6 @@
 import pytest
 
-from mlops.core.lockfile import LockfileError, load_lockfile
+from mldna.core.lockfile import LockfileError, load_lockfile
 
 
 def test_load_lockfile_missing_file_refuses(tmp_path):

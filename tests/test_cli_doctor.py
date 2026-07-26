@@ -2,7 +2,7 @@ import subprocess
 
 from typer.testing import CliRunner
 
-from mlops.cli.main import app
+from mldna.cli.main import app
 
 runner = CliRunner()
 

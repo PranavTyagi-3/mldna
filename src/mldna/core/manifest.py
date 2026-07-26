@@ -2,7 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from mlops.core import hashing
+from mldna.core import hashing
 
 
 class ManifestError(Exception):
@@ -72,13 +72,13 @@ def _verify_one(file_path, expected_sha256, label):
     if not file_path.exists():
         raise ManifestError(
             f"expected file '{label}' missing from the downloaded bundle. "
-            f"Fix: re-run mlops fetch; if this persists, contact the model publisher."
+            f"Fix: re-run mldna fetch; if this persists, contact the model publisher."
         )
     actual = hashing.sha256_file(file_path)
     if actual != expected_sha256:
         raise ManifestError(
             f"checksum mismatch for '{label}': expected {expected_sha256}, got {actual}. "
-            f"Fix: re-run mlops fetch; if this persists, the registry artifact may be corrupted."
+            f"Fix: re-run mldna fetch; if this persists, the registry artifact may be corrupted."
         )
 
 

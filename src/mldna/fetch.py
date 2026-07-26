@@ -5,11 +5,11 @@ from pathlib import Path
 import mlflow
 import yaml
 
-from mlops.core.lockfile import load_lockfile
-from mlops.core.manifest import resolve_format, verify_format_files
-from mlops.trackinguri import resolve_and_set_tracking_uri
+from mldna.core.lockfile import load_lockfile
+from mldna.core.manifest import resolve_format, verify_format_files
+from mldna.trackinguri import resolve_and_set_tracking_uri
 
-MARKER_NAME = ".mlops-version"
+MARKER_NAME = ".mldna-version"
 
 
 class FetchError(Exception):

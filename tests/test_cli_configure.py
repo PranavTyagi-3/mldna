@@ -3,9 +3,9 @@ import subprocess
 
 from typer.testing import CliRunner
 
-from mlops.cli.main import app
-from mlops.core import dvc
-from mlops.core.scaffold import scaffold_producer
+from mldna.cli.main import app
+from mldna.core import dvc
+from mldna.core.scaffold import scaffold_producer
 
 runner = CliRunner()
 
@@ -25,7 +25,7 @@ def test_configure_aml_auth_writes_file(tmp_path):
 
     assert result.exit_code == 0
     assert "Active AML auth mode" in result.output
-    data = json.loads((tmp_path / ".mlops" / "aml_auth.json").read_text())
+    data = json.loads((tmp_path / ".mldna" / "aml_auth.json").read_text())
     assert data == {"tenant_id": "t", "client_id": "c", "client_secret": "s"}
 
 
@@ -39,7 +39,7 @@ def test_configure_aml_auth_clear(tmp_path):
     result = runner.invoke(app, ["configure", "aml-auth", "--clear", "--dir", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert not (tmp_path / ".mlops" / "aml_auth.json").exists()
+    assert not (tmp_path / ".mldna" / "aml_auth.json").exists()
 
 
 def test_configure_blob_auth_writes_connection_string(tmp_path):

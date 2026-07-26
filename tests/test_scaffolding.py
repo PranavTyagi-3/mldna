@@ -1,7 +1,7 @@
 from typer.testing import CliRunner
 
-import mlops
-from mlops.cli.main import app
+import mldna
+from mldna.cli.main import app
 
 runner = CliRunner()
 
@@ -14,13 +14,13 @@ def test_package_has_version():
     from pathlib import Path
     pyproject = (Path(__file__).parent.parent / "pyproject.toml").read_text()
     declared = re.search(r'^version = "(.+)"$', pyproject, re.MULTILINE).group(1)
-    assert mlops.__version__ == declared
+    assert mldna.__version__ == declared
 
 
 def test_cli_version_flag():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert mlops.__version__ in result.stdout
+    assert mldna.__version__ in result.stdout
 
 
 def test_cli_help():

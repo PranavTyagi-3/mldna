@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 
-from mlops.core import blobauth, dvc, git
+from mldna.core import blobauth, dvc, git
 
 
 class PushError(Exception):
@@ -22,7 +22,7 @@ def _run_dvc(args, cwd, hint):
     return result
 
 
-def push(workspace_dir, message="mlops push"):
+def push(workspace_dir, message="mldna push"):
     workspace_dir = Path(workspace_dir)
 
     _run_dvc(["add", "dataset", "-q"], workspace_dir, "dvc add failed")

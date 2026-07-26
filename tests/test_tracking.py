@@ -4,8 +4,8 @@ import subprocess
 import mlflow
 import pytest
 
-from mlops.core.lock import RunLock, RunLockError
-from mlops.tracking import TrackRunError, track_run
+from mldna.core.lock import RunLock, RunLockError
+from mldna.tracking import TrackRunError, track_run
 
 
 def _get_run(workspace_dir, run_id):
@@ -37,8 +37,8 @@ def test_dirty_tree_allowed_with_allow_dirty(git_repo):
 def test_no_identity_refuses(tmp_path, monkeypatch):
     import subprocess
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    (tmp_path / "mlops.yaml").write_text("project:\n  model_name: test-model\n  repo_role: producer\n")
-    subprocess.run(["git", "add", "mlops.yaml"], cwd=tmp_path, check=True)
+    (tmp_path / "mldna.yaml").write_text("project:\n  model_name: test-model\n  repo_role: producer\n")
+    subprocess.run(["git", "add", "mldna.yaml"], cwd=tmp_path, check=True)
     subprocess.run(
         ["git", "-c", "user.email=dev@example.com", "-c", "user.name=dev",
          "commit", "-q", "-m", "init"],
@@ -75,7 +75,7 @@ def test_run_has_lineage_tags(git_repo):
     assert len(tags["git_commit"]) == 40
     assert tags["git_branch"] in ("main", "master")
     assert tags["user"] == "dev@example.com"
-    assert "mlops_version" in tags
+    assert "mldna_version" in tags
     assert "dirty" not in tags
     assert "dvc_data_hash" not in tags
 
@@ -112,13 +112,13 @@ def test_last_run_marker_written_on_success(git_repo):
     with track_run(workspace_dir=git_repo) as run:
         run_id = run.run_id
 
-    marker = json.loads((git_repo / ".mlops" / "last_run.json").read_text())
+    marker = json.loads((git_repo / ".mldna" / "last_run.json").read_text())
     assert marker["run_id"] == run_id
     assert marker["status"] == "FINISHED"
 
 
-def test_custom_model_glob_from_mlops_yaml_is_honored(git_repo):
-    (git_repo / "mlops.yaml").write_text(
+def test_custom_model_glob_from_mldna_yaml_is_honored(git_repo):
+    (git_repo / "mldna.yaml").write_text(
         "project:\n  model_name: test-model\n  repo_role: producer\n"
         "tracking:\n  model_globs: [\"*.custom\"]\n"
     )
@@ -133,8 +133,8 @@ def test_custom_model_glob_from_mlops_yaml_is_honored(git_repo):
     assert tags["model_sha256__0"].endswith(":model.custom")
 
 
-def test_custom_scan_exclude_from_mlops_yaml_is_honored(git_repo):
-    (git_repo / "mlops.yaml").write_text(
+def test_custom_scan_exclude_from_mldna_yaml_is_honored(git_repo):
+    (git_repo / "mldna.yaml").write_text(
         "project:\n  model_name: test-model\n  repo_role: producer\n"
         "tracking:\n  scan_exclude: [\"ignored_dir/\"]\n"
     )
@@ -157,7 +157,7 @@ def test_failed_run_marks_status_and_releases_lock(git_repo):
             raise RuntimeError("boom")
 
     assert _get_run(git_repo, run_id).info.status == "FAILED"
-    marker = json.loads((git_repo / ".mlops" / "last_run.json").read_text())
+    marker = json.loads((git_repo / ".mldna" / "last_run.json").read_text())
     assert marker["status"] == "FAILED"
     assert RunLock(git_repo).is_locked() is False
 
@@ -179,5 +179,5 @@ def test_lock_and_marker_survive_end_run_crashing(git_repo, monkeypatch):
 
     monkeypatch.setattr(mlflow, "end_run", real_end_run)
     assert RunLock(git_repo).is_locked() is False
-    marker = json.loads((git_repo / ".mlops" / "last_run.json").read_text())
+    marker = json.loads((git_repo / ".mldna" / "last_run.json").read_text())
     assert marker["run_id"] == run_id

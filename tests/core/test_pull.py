@@ -2,9 +2,9 @@ import subprocess
 
 import pytest
 
-from mlops.core.lock import RunLock
-from mlops.core.pull import PullError, pull
-from mlops.core.push import push
+from mldna.core.lock import RunLock
+from mldna.core.pull import PullError, pull
+from mldna.core.push import push
 
 
 def _clone(origin, dest):
@@ -32,9 +32,9 @@ def test_pull_syncs_code_and_data(producer_repo, tmp_path):
 
 
 def test_pull_fails_in_consumer_repo(tmp_path):
-    (tmp_path / "mlops.yaml").write_text("project:\n  repo_role: consumer\n")
+    (tmp_path / "mldna.yaml").write_text("project:\n  repo_role: consumer\n")
 
-    with pytest.raises(PullError, match="mlops fetch"):
+    with pytest.raises(PullError, match="mldna fetch"):
         pull(tmp_path)
 
 
@@ -58,7 +58,7 @@ def _force_rmtree(path):
 
 
 def test_pull_fails_clearly_without_dvc_remote(tmp_path):
-    from mlops.core.scaffold import scaffold_producer
+    from mldna.core.scaffold import scaffold_producer
     scaffold_producer(tmp_path, "test-model")
     (tmp_path / "dataset" / "data.csv").write_text("a,b\n1,2\n")
     subprocess.run(["git", "config", "user.email", "dev@example.com"], cwd=tmp_path, check=True)
@@ -66,7 +66,7 @@ def test_pull_fails_clearly_without_dvc_remote(tmp_path):
     origin = tmp_path.parent / "origin.git"
     subprocess.run(["git", "init", "--bare", "-q", str(origin)], check=True)
     subprocess.run(["git", "remote", "add", "origin", str(origin)], cwd=tmp_path, check=True)
-    from mlops.core import dvc
+    from mldna.core import dvc
     dvc.run(["add", "dataset", "-q"], cwd=tmp_path)
     subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=tmp_path, check=True)

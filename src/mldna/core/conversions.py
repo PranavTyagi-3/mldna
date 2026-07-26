@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from mlops.core import hashing
+from mldna.core import hashing
 
 
 class ConversionError(Exception):
@@ -26,7 +26,7 @@ def verify_bundle(conversions, format_dirs, source_pkl_sha):
                 raise ConversionError(
                     f"{file} is not recorded as a tracked conversion. Every file "
                     f"in a published bundle must be produced inside "
-                    f"mlops.track_convert(...) so its provenance chains to the pkl. "
+                    f"mldna.track_convert(...) so its provenance chains to the pkl. "
                     f"Fix: re-run the conversion inside a track_convert block."
                 )
             if entry["source_pkl_sha256"] != source_pkl_sha:

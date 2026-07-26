@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from mlops.core.lock import RunLock, RunLockError
+from mldna.core.lock import RunLock, RunLockError
 
 
 def test_acquire_and_release(tmp_path):
@@ -25,7 +25,7 @@ def test_acquire_refuses_when_already_held(tmp_path):
 
 
 def test_stale_lock_is_reclaimed(tmp_path):
-    lock_path = tmp_path / ".mlops" / "run.lock"
+    lock_path = tmp_path / ".mldna" / "run.lock"
     lock_path.parent.mkdir(parents=True)
     lock_path.write_text(json.dumps({"pid": 999999999, "run_id": None, "started_at": ""}))
 

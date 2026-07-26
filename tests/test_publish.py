@@ -3,13 +3,13 @@ import subprocess
 import mlflow
 import pytest
 
-from mlops.core.commitcheck import CommitReachabilityError
-from mlops.core.conversions import ConversionError
-from mlops.core.push import push as core_push
-from mlops.core.resolve import ResolveError
-from mlops.core.rungates import RunGateError
-from mlops.publish import PublishError, publish
-from mlops.tracking import track_convert, track_run
+from mldna.core.commitcheck import CommitReachabilityError
+from mldna.core.conversions import ConversionError
+from mldna.core.push import push as core_push
+from mldna.core.resolve import ResolveError
+from mldna.core.rungates import RunGateError
+from mldna.publish import PublishError, publish
+from mldna.tracking import track_convert, track_run
 
 
 def _commit_scaffold(repo):
@@ -66,7 +66,7 @@ def test_publish_same_run_twice_refuses_instead_of_reuploading(producer_repo):
     assert result["run_id"] == run_id
 
     # Same pkl content, no retrain in between (e.g. only unrelated code changed
-    # and `mlops push` was re-run) - resolve_run matches the same already-
+    # and `mldna push` was re-run) - resolve_run matches the same already-
     # published run by content hash, which must be refused up front rather
     # than attempting to re-upload artifacts the registry already has.
     with pytest.raises(RunGateError, match="already published"):
@@ -116,8 +116,8 @@ def test_publish_aborts_when_confirm_declines(producer_repo):
     assert "registry_version" not in run.data.tags
 
 
-def test_publish_enforces_require_formats_from_mlops_yaml(producer_repo):
-    config_path = producer_repo / "mlops.yaml"
+def test_publish_enforces_require_formats_from_mldna_yaml(producer_repo):
+    config_path = producer_repo / "mldna.yaml"
     import yaml
     data = yaml.safe_load(config_path.read_text())
     data["publish"] = {"require_formats": ["openvino"]}
@@ -125,7 +125,7 @@ def test_publish_enforces_require_formats_from_mlops_yaml(producer_repo):
 
     pkl, run_id = _tracked_pkl(producer_repo)
 
-    from mlops.core.structure import StructureError
+    from mldna.core.structure import StructureError
     with pytest.raises(StructureError, match="openvino"):
         publish(pkl, workspace_dir=producer_repo)
 

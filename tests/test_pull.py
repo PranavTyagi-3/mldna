@@ -3,11 +3,11 @@ import subprocess
 
 import pytest
 
-from mlops.core.pull import PullError
-from mlops.core.push import push as core_push
-from mlops.publish import publish
-from mlops.pull import pull
-from mlops.tracking import track_run
+from mldna.core.pull import PullError
+from mldna.core.push import push as core_push
+from mldna.publish import publish
+from mldna.pull import pull
+from mldna.tracking import track_run
 
 
 def _commit_and_push(repo):

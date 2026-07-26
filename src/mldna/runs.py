@@ -3,8 +3,8 @@ from pathlib import Path
 
 import mlflow
 
-from mlops.core.config import ProjectConfig
-from mlops.trackinguri import resolve_and_set_tracking_uri
+from mldna.core.config import ProjectConfig
+from mldna.trackinguri import resolve_and_set_tracking_uri
 
 DEFAULT_LAST = 20
 
@@ -21,16 +21,16 @@ def _format_started(start_time_ms):
 
 def list_runs(workspace_dir=".", last=DEFAULT_LAST):
     workspace_dir = Path(workspace_dir)
-    config_path = workspace_dir / "mlops.yaml"
+    config_path = workspace_dir / "mldna.yaml"
     if not config_path.exists():
         raise RunsError(
-            "mlops.yaml not found. Fix: run `mlops init <model-name>` in a producer project first."
+            "mldna.yaml not found. Fix: run `mldna init <model-name>` in a producer project first."
         )
     config = ProjectConfig.from_yaml(config_path)
     if not config.model_name:
         raise RunsError(
-            "mlops.yaml has no project.model_name - mlops runs only works in a producer "
-            "project. Fix: set project.model_name in mlops.yaml."
+            "mldna.yaml has no project.model_name - mldna runs only works in a producer "
+            "project. Fix: set project.model_name in mldna.yaml."
         )
 
     resolve_and_set_tracking_uri(workspace_dir)

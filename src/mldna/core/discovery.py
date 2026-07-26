@@ -1,7 +1,7 @@
 import fnmatch
 from pathlib import Path
 
-DEFAULT_EXCLUDES = ["dataset/", ".git/", ".dvc/cache/", ".mlops/", "outputs/"]
+DEFAULT_EXCLUDES = ["dataset/", ".git/", ".dvc/cache/", ".mldna/", "outputs/"]
 
 DEFAULT_MODEL_GLOBS = [
     "*.pkl", "*.pt", "*.pth", "*.h5", "*.joblib",

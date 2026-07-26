@@ -15,13 +15,13 @@ def _import_azure_identity():
         from azure.identity import ClientSecretCredential, DefaultAzureCredential
     except ImportError as e:
         raise ImportError(
-            f'Azure ML auth needs the `azure` extra. Fix: pip install "mlops[azure]" ({e})'
+            f'Azure ML auth needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
         )
     return ClientSecretCredential, DefaultAzureCredential
 
 
 def _auth_file_path(workspace_dir):
-    return Path(workspace_dir) / ".mlops" / AUTH_FILE
+    return Path(workspace_dir) / ".mldna" / AUTH_FILE
 
 
 def write_local_auth(workspace_dir, tenant_id, client_id, client_secret):
@@ -65,6 +65,6 @@ def resolve_aml_credential(workspace_dir):
         credential = ClientSecretCredential(
             creds["tenant_id"], creds["client_id"], creds["client_secret"]
         )
-        return credential, f".mlops/{AUTH_FILE} (service principal)"
+        return credential, f".mldna/{AUTH_FILE} (service principal)"
 
     return DefaultAzureCredential(), "DefaultAzureCredential (az login / managed identity)"

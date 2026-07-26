@@ -1,4 +1,4 @@
-from mlops.core import git
+from mldna.core import git
 
 
 def test_is_clean_on_fresh_commit(git_repo):

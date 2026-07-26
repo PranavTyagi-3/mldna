@@ -1,6 +1,6 @@
 import pytest
 
-from mlops.core.structure import StructureError, check_structure
+from mldna.core.structure import StructureError, check_structure
 
 
 def _make_bundle(tmp_path, formats):

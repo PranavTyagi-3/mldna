@@ -1,4 +1,4 @@
-from mlops.core.config import ProjectConfig
+from mldna.core.config import ProjectConfig
 
 MINIMAL_YAML = """
 project:
@@ -17,7 +17,7 @@ tracking:
 
 
 def test_loads_minimal_config(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(MINIMAL_YAML)
 
     config = ProjectConfig.from_yaml(path)
@@ -27,7 +27,7 @@ def test_loads_minimal_config(tmp_path):
 
 
 def test_tracking_overrides_extend_defaults(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(WITH_TRACKING_YAML)
 
     config = ProjectConfig.from_yaml(path)
@@ -37,7 +37,7 @@ def test_tracking_overrides_extend_defaults(tmp_path):
 
 
 def test_consumer_config_without_model_name_loads(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text("project:\n  repo_role: consumer\n")
 
     config = ProjectConfig.from_yaml(path)
@@ -47,7 +47,7 @@ def test_consumer_config_without_model_name_loads(tmp_path):
 
 
 def test_key_metric_parsed_from_tracking_section(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(
         "project:\n  model_name: fraud-detector\n  repo_role: producer\n"
         "tracking:\n  key_metric: accuracy\n"
@@ -59,7 +59,7 @@ def test_key_metric_parsed_from_tracking_section(tmp_path):
 
 
 def test_key_metric_defaults_to_none(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(MINIMAL_YAML)
 
     config = ProjectConfig.from_yaml(path)
@@ -68,7 +68,7 @@ def test_key_metric_defaults_to_none(tmp_path):
 
 
 def test_require_formats_parsed_from_publish_section(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(
         "project:\n  model_name: fraud-detector\n  repo_role: producer\n"
         "publish:\n  require_formats: [openvino]\n"
@@ -80,7 +80,7 @@ def test_require_formats_parsed_from_publish_section(tmp_path):
 
 
 def test_require_formats_defaults_to_empty(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(MINIMAL_YAML)
 
     config = ProjectConfig.from_yaml(path)
@@ -88,15 +88,15 @@ def test_require_formats_defaults_to_empty(tmp_path):
     assert config.require_formats == []
 
 
-def test_load_returns_defaults_when_mlops_yaml_missing(tmp_path):
+def test_load_returns_defaults_when_mldna_yaml_missing(tmp_path):
     config = ProjectConfig.load(tmp_path)
 
     assert config.model_name is None
     assert config.require_formats == []
 
 
-def test_load_reads_existing_mlops_yaml(tmp_path):
-    (tmp_path / "mlops.yaml").write_text(MINIMAL_YAML)
+def test_load_reads_existing_mldna_yaml(tmp_path):
+    (tmp_path / "mldna.yaml").write_text(MINIMAL_YAML)
 
     config = ProjectConfig.load(tmp_path)
 
@@ -104,7 +104,7 @@ def test_load_reads_existing_mlops_yaml(tmp_path):
 
 
 def test_tracking_uri_parsed_from_azure_section(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(
         "project:\n  model_name: fraud-detector\n  repo_role: producer\n"
         "azure:\n  tracking_uri: azureml://region.api.azureml.ms/mlflow/v1.0/x\n"
@@ -117,7 +117,7 @@ def test_tracking_uri_parsed_from_azure_section(tmp_path):
 
 
 def test_tracking_uri_defaults_to_none(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(MINIMAL_YAML)
 
     config = ProjectConfig.from_yaml(path)
@@ -126,7 +126,7 @@ def test_tracking_uri_defaults_to_none(tmp_path):
 
 
 def test_mlflow_tracking_uri_parsed_from_mlflow_section(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(
         "project:\n  model_name: fraud-detector\n  repo_role: producer\n"
         "mlflow:\n  tracking_uri: http://my-mlflow-host:5000\n"
@@ -139,7 +139,7 @@ def test_mlflow_tracking_uri_parsed_from_mlflow_section(tmp_path):
 
 
 def test_mlflow_tracking_uri_defaults_to_none(tmp_path):
-    path = tmp_path / "mlops.yaml"
+    path = tmp_path / "mldna.yaml"
     path.write_text(MINIMAL_YAML)
 
     config = ProjectConfig.from_yaml(path)

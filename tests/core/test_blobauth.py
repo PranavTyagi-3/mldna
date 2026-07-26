@@ -1,5 +1,5 @@
-from mlops.core import blobauth, dvc
-from mlops.core.scaffold import scaffold_producer
+from mldna.core import blobauth, dvc
+from mldna.core.scaffold import scaffold_producer
 
 
 def _config_local(repo):
@@ -28,7 +28,7 @@ def test_set_and_clear_connection_string(tmp_path):
 
 def test_resolve_env_override_sets_connection_string(tmp_path, monkeypatch):
     repo = _azure_remote_repo(tmp_path)
-    monkeypatch.setenv("MLOPS_BLOB_CONNECTION_STRING", "DefaultEndpointsProtocol=https;fromenv=1")
+    monkeypatch.setenv("MLDNA_BLOB_CONNECTION_STRING", "DefaultEndpointsProtocol=https;fromenv=1")
 
     used = blobauth.resolve_env_override(repo, "azure-remote")
 
@@ -38,7 +38,7 @@ def test_resolve_env_override_sets_connection_string(tmp_path, monkeypatch):
 
 def test_resolve_env_override_noop_without_env_var(tmp_path, monkeypatch):
     repo = _azure_remote_repo(tmp_path)
-    monkeypatch.delenv("MLOPS_BLOB_CONNECTION_STRING", raising=False)
+    monkeypatch.delenv("MLDNA_BLOB_CONNECTION_STRING", raising=False)
 
     used = blobauth.resolve_env_override(repo, "azure-remote")
 

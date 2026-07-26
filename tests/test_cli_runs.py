@@ -2,9 +2,9 @@ import subprocess
 
 from typer.testing import CliRunner
 
-from mlops.cli.main import app
-from mlops.core.push import push as core_push
-from mlops.tracking import track_run
+from mldna.cli.main import app
+from mldna.core.push import push as core_push
+from mldna.tracking import track_run
 
 runner = CliRunner()
 
@@ -29,7 +29,7 @@ def test_runs_cli_lists_a_run(producer_repo):
     assert run.run_id[:8] in result.output
 
 
-def test_runs_cli_missing_mlops_yaml_fails_cleanly(tmp_path):
+def test_runs_cli_missing_mldna_yaml_fails_cleanly(tmp_path):
     result = runner.invoke(app, ["runs", "--dir", str(tmp_path)])
 
     assert result.exit_code == 1

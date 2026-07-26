@@ -9,12 +9,12 @@ from pathlib import Path
 
 import mlflow
 
-from mlops import __version__
-from mlops.core import conversions, discovery, dvc, git, hashing, identity, tags
-from mlops.core.config import ProjectConfig
-from mlops.core.lock import RunLock
-from mlops.core.resolve import resolve_run
-from mlops.trackinguri import resolve_and_set_tracking_uri
+from mldna import __version__
+from mldna.core import conversions, discovery, dvc, git, hashing, identity, tags
+from mldna.core.config import ProjectConfig
+from mldna.core.lock import RunLock
+from mldna.core.resolve import resolve_run
+from mldna.trackinguri import resolve_and_set_tracking_uri
 
 
 class TrackRunError(Exception):
@@ -32,9 +32,9 @@ def _require_model_name(workspace_dir):
     config = ProjectConfig.load(workspace_dir)
     if not config.model_name:
         raise TrackRunError(
-            "mlops.yaml has no project.model_name set, so there's nothing to "
-            "attribute this run to. Fix: run `mlops init <model-name>` in "
-            f"{workspace_dir}, or set project.model_name in mlops.yaml."
+            "mldna.yaml has no project.model_name set, so there's nothing to "
+            "attribute this run to. Fix: run `mldna init <model-name>` in "
+            f"{workspace_dir}, or set project.model_name in mldna.yaml."
         )
     return config
 
@@ -63,7 +63,7 @@ class track_run(ContextDecorator):
             raise TrackRunError(
                 "Working tree has uncommitted changes. Runs must start from a "
                 "committed state so the recorded commit is provably the code "
-                "that trained the model. Fix: mlops push "
+                "that trained the model. Fix: mldna push "
                 "(exploring? pass allow_dirty=True — the run will be unpublishable)"
             )
 
@@ -71,7 +71,7 @@ class track_run(ContextDecorator):
         if not user:
             self.lock.release()
             raise TrackRunError(
-                "No identity could be resolved. Set .mlops/user, or configure "
+                "No identity could be resolved. Set .mldna/user, or configure "
                 "`git config user.email`, to attribute this run."
             )
 
@@ -90,7 +90,7 @@ class track_run(ContextDecorator):
         mlflow.set_tag(tags.GIT_COMMIT, git.get_commit_sha(self.workspace_dir))
         mlflow.set_tag(tags.GIT_BRANCH, git.get_branch(self.workspace_dir))
         mlflow.set_tag(tags.USER, user)
-        mlflow.set_tag(tags.MLOPS_VERSION, __version__)
+        mlflow.set_tag(tags.MLDNA_VERSION, __version__)
         if dirty:
             mlflow.set_tag(tags.DIRTY, "true")
         data_hash = dvc.read_data_hash(self.workspace_dir)
@@ -156,7 +156,7 @@ class track_run(ContextDecorator):
             "git_commit": git.get_commit_sha(self.workspace_dir),
             "status": status,
         }
-        marker_path = self.workspace_dir / ".mlops" / "last_run.json"
+        marker_path = self.workspace_dir / ".mldna" / "last_run.json"
         marker_path.parent.mkdir(parents=True, exist_ok=True)
         marker_path.write_text(json.dumps(marker))
 
