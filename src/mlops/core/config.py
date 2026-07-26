@@ -16,6 +16,7 @@ class ProjectConfig:
     resource_group: str = None
     workspace: str = None
     tracking_uri: str = None
+    mlflow_tracking_uri: str = None
     key_metric: str = None
     require_formats: list = field(default_factory=list)
     raw: dict = field(default_factory=dict)
@@ -26,6 +27,7 @@ class ProjectConfig:
         project = data.get("project", {})
         tracking = data.get("tracking", {})
         azure = data.get("azure", {})
+        mlflow_section = data.get("mlflow", {})
         publish = data.get("publish", {})
         return cls(
             model_name=project.get("model_name"),
@@ -36,6 +38,7 @@ class ProjectConfig:
             resource_group=azure.get("resource_group"),
             workspace=azure.get("workspace"),
             tracking_uri=azure.get("tracking_uri"),
+            mlflow_tracking_uri=mlflow_section.get("tracking_uri"),
             key_metric=tracking.get("key_metric"),
             require_formats=publish.get("require_formats", []),
             raw=data,

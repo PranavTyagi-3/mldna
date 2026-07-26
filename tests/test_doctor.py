@@ -105,6 +105,46 @@ def test_check_aml_auth_fails_when_incomplete(producer_repo):
     assert "workspace" in result.message
 
 
+def test_check_aml_auth_passes_with_reachable_mlflow_server(producer_repo, monkeypatch):
+    from mlops.core.scaffold import write_mlflow_tracking_uri
+    write_mlflow_tracking_uri(producer_repo, "http://my-mlflow-host:5000")
+    monkeypatch.setattr(
+        "mlflow.tracking.MlflowClient.search_experiments",
+        lambda self, max_results=None: [],
+    )
+
+    result = check_aml_auth(producer_repo)
+
+    assert result.passed is True
+    assert "remote mlflow server" in result.message
+
+
+def test_check_aml_auth_fails_when_mlflow_server_unreachable(producer_repo, monkeypatch):
+    from mlops.core.scaffold import write_mlflow_tracking_uri
+    write_mlflow_tracking_uri(producer_repo, "http://my-mlflow-host:5000")
+
+    def boom(self, max_results=None):
+        raise ConnectionError("refused")
+
+    monkeypatch.setattr("mlflow.tracking.MlflowClient.search_experiments", boom)
+
+    result = check_aml_auth(producer_repo)
+
+    assert result.passed is False
+    assert "MLflow tracking server" in result.message
+
+
+def test_check_aml_auth_fails_when_both_mlflow_and_azure_configured(producer_repo):
+    from mlops.core.scaffold import write_azure_config, write_mlflow_tracking_uri
+    write_mlflow_tracking_uri(producer_repo, "http://my-mlflow-host:5000")
+    write_azure_config(producer_repo, "sub", "rg", "ws")
+
+    result = check_aml_auth(producer_repo)
+
+    assert result.passed is False
+    assert "only one tracking" in result.message
+
+
 def test_check_blob_auth_reports_mode(producer_repo):
     result = check_blob_auth(producer_repo)
 

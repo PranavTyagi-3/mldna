@@ -120,3 +120,48 @@ def test_local_mode_does_not_touch_stdout(tmp_path, monkeypatch):
     monkeypatch.setattr(trackinguri_module.sys, "stdout", FakeStdout())
 
     resolve_and_set_tracking_uri(tmp_path)  # no raise
+
+
+def test_mlflow_section_sets_tracking_uri(tmp_path):
+    _write_config(tmp_path, {"mlflow": {"tracking_uri": "http://my-mlflow-host:5000"}})
+
+    uri, mode = resolve_and_set_tracking_uri(tmp_path)
+
+    assert uri == "http://my-mlflow-host:5000"
+    assert mode == "remote mlflow server"
+    assert mlflow.get_tracking_uri() == uri
+
+
+def test_mlflow_section_missing_tracking_uri_raises(tmp_path):
+    _write_config(tmp_path, {"mlflow": {}})
+
+    with pytest.raises(TrackingUriError, match="tracking_uri"):
+        resolve_and_set_tracking_uri(tmp_path)
+
+
+def test_both_mlflow_and_azure_sections_raises(tmp_path):
+    _write_config(tmp_path, {
+        "mlflow": {"tracking_uri": "http://my-mlflow-host:5000"},
+        "azure": {"subscription_id": "s", "resource_group": "rg", "workspace": "ws"},
+    })
+
+    with pytest.raises(TrackingUriError, match="only one tracking"):
+        resolve_and_set_tracking_uri(tmp_path)
+
+
+def test_mlflow_mode_makes_stdout_unicode_safe(tmp_path, monkeypatch):
+    # Same emoji-crash risk as the Azure branch (D#30's stdout fix) - a plain
+    # remote MLflow server is also a real REST tracking server, unlike local.
+    _write_config(tmp_path, {"mlflow": {"tracking_uri": "http://my-mlflow-host:5000"}})
+
+    calls = []
+
+    class FakeStdout:
+        def reconfigure(self, **kwargs):
+            calls.append(kwargs)
+
+    monkeypatch.setattr(trackinguri_module.sys, "stdout", FakeStdout())
+
+    resolve_and_set_tracking_uri(tmp_path)
+
+    assert calls == [{"errors": "replace"}]

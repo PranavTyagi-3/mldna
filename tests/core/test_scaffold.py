@@ -5,10 +5,12 @@ from mlops.core.scaffold import (
     configure_local_dvc_remote,
     has_azure_config,
     has_dvc_config,
+    has_mlflow_config,
     scaffold_consumer,
     scaffold_producer,
     write_azure_config,
     write_azure_tracking_uri,
+    write_mlflow_tracking_uri,
 )
 
 
@@ -159,6 +161,25 @@ def test_write_azure_tracking_uri_preserves_project_section(tmp_path):
     config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
     assert config["project"]["model_name"] == "fraud-detector"
     assert config["azure"] == {"tracking_uri": "azureml://pasted-endpoint"}
+
+
+def test_has_mlflow_config_false_before_and_true_after(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+    assert has_mlflow_config(tmp_path) is False
+
+    write_mlflow_tracking_uri(tmp_path, "http://my-mlflow-host:5000")
+
+    assert has_mlflow_config(tmp_path) is True
+
+
+def test_write_mlflow_tracking_uri_preserves_project_section(tmp_path):
+    scaffold_producer(tmp_path, "fraud-detector")
+
+    write_mlflow_tracking_uri(tmp_path, "http://my-mlflow-host:5000")
+
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["project"]["model_name"] == "fraud-detector"
+    assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
 
 
 def test_has_dvc_config_false_before_and_true_after(tmp_path):

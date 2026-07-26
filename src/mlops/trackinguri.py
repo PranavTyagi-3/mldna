@@ -35,7 +35,28 @@ def _make_stdout_unicode_safe():
 def resolve_and_set_tracking_uri(workspace_dir):
     config = _load_config(workspace_dir)
 
-    if config is None or "azure" not in config.raw:
+    has_mlflow_section = config is not None and "mlflow" in config.raw
+    has_azure_section = config is not None and "azure" in config.raw
+
+    if has_mlflow_section and has_azure_section:
+        raise TrackingUriError(
+            "mlops.yaml has both mlflow: and azure: sections - only one tracking "
+            "source may be configured. Fix: remove the mlflow: section to use "
+            "Azure ML, or remove the azure: section to use the remote MLflow server."
+        )
+
+    if has_mlflow_section:
+        if not config.mlflow_tracking_uri:
+            raise TrackingUriError(
+                "mlops.yaml has an mlflow: section but no tracking_uri key. "
+                "Fix: add `tracking_uri: \"http://host:port\"` under mlflow:, or "
+                "remove the mlflow: section entirely to use local tracking."
+            )
+        _make_stdout_unicode_safe()
+        mlflow.set_tracking_uri(config.mlflow_tracking_uri)
+        return config.mlflow_tracking_uri, "remote mlflow server"
+
+    if not has_azure_section:
         uri = f"file:{Path(workspace_dir) / 'mlruns'}"
         mlflow.set_tracking_uri(uri)
         return uri, "local"

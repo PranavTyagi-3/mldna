@@ -5,7 +5,7 @@ from pathlib import Path
 
 from mlops.core import blobauth, dvc
 from mlops.core.lock import RunLock
-from mlops.core.scaffold import GITIGNORE, has_azure_config
+from mlops.core.scaffold import GITIGNORE, has_azure_config, has_mlflow_config
 from mlops.trackinguri import TrackingUriError, resolve_and_set_tracking_uri
 
 SECRET_PATTERNS = (
@@ -104,15 +104,23 @@ def check_committed_secrets(workspace_dir):
 
 
 def check_aml_auth(workspace_dir):
-    if not has_azure_config(workspace_dir):
+    is_mlflow = has_mlflow_config(workspace_dir)
+    if not has_azure_config(workspace_dir) and not is_mlflow:
         return _check("aml_auth", True, "Not configured - local tracking mode.")
     try:
         _, mode = resolve_and_set_tracking_uri(workspace_dir)
+        if is_mlflow:
+            # resolve_and_set_tracking_uri only sets the URI for a plain MLflow
+            # server - unlike the azure branch, it never actually calls the
+            # server, so doctor's "reachable" claim would otherwise be a lie.
+            from mlflow.tracking import MlflowClient
+            MlflowClient().search_experiments(max_results=1)
     except TrackingUriError as e:
         return _check("aml_auth", False, str(e))
     except Exception as e:
-        return _check("aml_auth", False, f"Could not reach Azure ML workspace: {e}")
-    return _check("aml_auth", True, f"Reachable, auth mode: {mode}")
+        target = "MLflow tracking server" if is_mlflow else "Azure ML workspace"
+        return _check("aml_auth", False, f"Could not reach {target}: {e}")
+    return _check("aml_auth", True, f"Reachable, tracking mode: {mode}")
 
 
 def check_blob_auth(workspace_dir):

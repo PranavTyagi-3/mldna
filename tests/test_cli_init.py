@@ -97,10 +97,11 @@ def test_init_azure_ad_flow_discovers_and_selects_workspace(tmp_path, monkeypatc
     )
     monkeypatch.setattr("azure.identity.DefaultAzureCredential", lambda: "fake-credential")
 
-    # auth-mode=aad (menu choice "1"), then subscription ID, then pick workspace #2.
+    # tracking-source=Azure ML (menu choice "3"), then auth-mode=aad ("1"),
+    # then subscription ID, then pick workspace #2.
     result = runner.invoke(app, [
         "init", "fraud-detector", "--dir", str(tmp_path), "--dvc-backend", "skip",
-    ], input="2\n1\nsub-123\n2\n")
+    ], input="3\n1\nsub-123\n2\n")
 
     assert result.exit_code == 0
     assert "Select AML workspace:" in result.output
@@ -122,8 +123,50 @@ def test_init_azure_flag_does_not_reprompt_when_already_configured(tmp_path):
     result = runner.invoke(app, ["init", "fraud-detector", "--dir", str(tmp_path), "--azure"])
 
     assert result.exit_code == 0
-    assert "already has an azure: section" in result.output
+    assert "already has a tracking source configured" in result.output
     assert "already has a dvc: section" in result.output
+
+
+def test_init_mlflow_uri_flag_skips_menu(tmp_path):
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path),
+        "--mlflow-uri", "http://my-mlflow-host:5000", "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 0
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
+    assert "azure" not in config
+
+
+def test_init_bare_prompts_offer_mlflow_menu_option(tmp_path):
+    # "2" = Remote MLflow server (URL), then the URL prompt, then "3" = Skip
+    # DVC backend.
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path),
+    ], input="2\nhttp://my-mlflow-host:5000\n3\n")
+
+    assert result.exit_code == 0
+    assert "Remote MLflow server (URL)" in result.output
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
+
+
+def test_init_mlflow_flag_does_not_reprompt_when_already_configured(tmp_path):
+    runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path),
+        "--mlflow-uri", "http://my-mlflow-host:5000", "--dvc-backend", "skip",
+    ])
+
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path),
+        "--mlflow-uri", "http://other-host:5000", "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 0
+    assert "already has a tracking source configured" in result.output
+    config = yaml.safe_load((tmp_path / "mlops.yaml").read_text())
+    assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
 
 
 def test_init_without_model_name_requires_consumer_flag(tmp_path):

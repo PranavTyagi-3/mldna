@@ -140,6 +140,21 @@ def write_azure_tracking_uri(project_dir, tracking_uri):
     config_path.write_text(yaml.dump(data, sort_keys=False))
 
 
+def has_mlflow_config(project_dir):
+    config_path = Path(project_dir) / "mlops.yaml"
+    if not config_path.exists():
+        return False
+    data = yaml.safe_load(config_path.read_text()) or {}
+    return "mlflow" in data
+
+
+def write_mlflow_tracking_uri(project_dir, tracking_uri):
+    config_path = Path(project_dir) / "mlops.yaml"
+    data = yaml.safe_load(config_path.read_text()) or {}
+    data["mlflow"] = {"tracking_uri": tracking_uri}
+    config_path.write_text(yaml.dump(data, sort_keys=False))
+
+
 def has_dvc_config(project_dir):
     config_path = Path(project_dir) / "mlops.yaml"
     if not config_path.exists():

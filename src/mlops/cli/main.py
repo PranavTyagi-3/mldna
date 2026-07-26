@@ -17,10 +17,12 @@ from mlops.core.scaffold import (
     configure_local_dvc_remote,
     has_azure_config,
     has_dvc_config,
+    has_mlflow_config,
     scaffold_consumer,
     scaffold_producer,
     write_azure_config,
     write_azure_tracking_uri,
+    write_mlflow_tracking_uri,
 )
 from mlops.core.structure import StructureError
 from mlops.doctor import run_doctor
@@ -38,7 +40,7 @@ FETCH_ERRORS = (FetchError, LockfileError, ManifestError, TrackingUriError)
 
 app = typer.Typer(
     name="mlops",
-    help="Internal MLOps framework combining DVC + MLflow on an Azure ML backend.",
+    help="A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned consumption.",
 )
 
 configure_app = typer.Typer(help="Configure per-machine auth.")
@@ -165,6 +167,15 @@ def _configure_azure_tracking(
     typer.echo("Wrote azure: section to mlops.yaml")
 
 
+def _configure_mlflow_tracking(dir, mlflow_uri):
+    """Writes mlops.yaml's mlflow: section - a plain, non-Azure MLflow tracking
+    server URL. No mlops-managed auth: mlflow-skinny itself reads
+    MLFLOW_TRACKING_USERNAME/PASSWORD/TOKEN natively for servers that need it."""
+    mlflow_uri = mlflow_uri or typer.prompt("MLflow tracking server URL (e.g. http://host:5000)")
+    write_mlflow_tracking_uri(dir, mlflow_uri)
+    typer.echo("Wrote mlflow: section to mlops.yaml")
+
+
 def _configure_dvc(
     dir, model_name, dvc_backend, dvc_local_path,
     dvc_account, dvc_container, dvc_prefix,
@@ -232,7 +243,15 @@ def _configure_dvc(
         )
     else:
         dvc_account = dvc_account or typer.prompt("DVC storage account name")
-        from azure.identity import DefaultAzureCredential
+        try:
+            from azure.identity import DefaultAzureCredential
+        except ImportError:
+            typer.echo(
+                "An Azure Blob DVC remote needs the `azure` extra. "
+                'Fix: pip install "mlops[azure]"',
+                err=True,
+            )
+            raise typer.Exit(1)
         dvc_container = dvc_container or _pick_container(
             lambda: aml_blob.list_containers_via_credential(dvc_account, DefaultAzureCredential())
         )
@@ -261,9 +280,10 @@ def init(
     dir: str = typer.Option(".", "--dir", help="Target project directory"),
     consumer: bool = typer.Option(False, "--consumer", help="Scaffold a consumer repo instead of a producer project"),
     azure: bool = typer.Option(False, "--azure", help="Shortcut: skip the tracking-source menu and configure Azure ML"),
-    tracking_source: str = typer.Option(None, "--tracking-source", help="local | azure"),
+    tracking_source: str = typer.Option(None, "--tracking-source", help="local | mlflow | azure"),
     auth_mode: str = typer.Option(None, "--auth-mode", help="aad | service-principal"),
     tracking_uri: str = typer.Option(None, "--tracking-uri", help="Azure ML MLflow tracking endpoint (service-principal flow)"),
+    mlflow_uri: str = typer.Option(None, "--mlflow-uri", help="Plain (non-Azure) MLflow tracking server URL"),
     tenant_id: str = typer.Option(None, "--tenant-id"),
     client_id: str = typer.Option(None, "--client-id"),
     client_secret: str = typer.Option(None, "--client-secret"),
@@ -283,12 +303,18 @@ def init(
         azure or subscription_id or resource_group or workspace or tracking_uri
         or auth_mode or tenant_id or client_id or client_secret
     )
+    mlflow_flag_given = bool(mlflow_uri)
 
     if consumer:
         created = scaffold_consumer(dir)
         for path in created:
             typer.echo(f"created {path}")
         typer.echo("Initialized consumer project.")
+
+        if mlflow_flag_given and not has_mlflow_config(dir):
+            _configure_mlflow_tracking(dir, mlflow_uri)
+        elif mlflow_flag_given:
+            typer.echo("mlops.yaml already has an mlflow: section - not re-prompting.")
 
         if azure_flag_given and not has_azure_config(dir):
             _configure_azure_tracking(
@@ -313,16 +339,26 @@ def init(
     typer.echo(f"Initialized producer project '{model_name}'.")
 
     configured_azure = False
-    if has_azure_config(dir):
-        typer.echo("mlops.yaml already has an azure: section - not re-prompting.")
+    if has_azure_config(dir) or has_mlflow_config(dir):
+        typer.echo(
+            "mlops.yaml already has a tracking source configured (azure: or "
+            "mlflow: section) - not re-prompting."
+        )
     else:
-        if not azure_flag_given:
-            tracking_source = tracking_source or ["local", "azure"][
-                _choose("Select MLflow tracking source:", ["Local", "Azure ML"])
-            ]
-        else:
+        if azure_flag_given:
             tracking_source = "azure"
-        if tracking_source == "azure":
+        elif mlflow_flag_given:
+            tracking_source = "mlflow"
+        elif not tracking_source:
+            tracking_source = ["local", "mlflow", "azure"][
+                _choose(
+                    "Select MLflow tracking source:",
+                    ["Local", "Remote MLflow server (URL)", "Azure ML"],
+                )
+            ]
+        if tracking_source == "mlflow":
+            _configure_mlflow_tracking(dir, mlflow_uri)
+        elif tracking_source == "azure":
             _configure_azure_tracking(
                 dir, auth_mode, tracking_uri, tenant_id, client_id, client_secret,
                 subscription_id, resource_group, workspace,
@@ -494,7 +530,11 @@ def configure_aml_auth(
         aml_auth.write_local_auth(dir, tenant_id, client_id, client_secret)
         typer.echo(f"Saved to .mlops/{aml_auth.AUTH_FILE}")
 
-    _, mode = aml_auth.resolve_aml_credential(dir)
+    try:
+        _, mode = aml_auth.resolve_aml_credential(dir)
+    except ImportError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(1)
     typer.echo(f"Active AML auth mode: {mode}")
 
 

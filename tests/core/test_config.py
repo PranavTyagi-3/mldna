@@ -123,3 +123,25 @@ def test_tracking_uri_defaults_to_none(tmp_path):
     config = ProjectConfig.from_yaml(path)
 
     assert config.tracking_uri is None
+
+
+def test_mlflow_tracking_uri_parsed_from_mlflow_section(tmp_path):
+    path = tmp_path / "mlops.yaml"
+    path.write_text(
+        "project:\n  model_name: fraud-detector\n  repo_role: producer\n"
+        "mlflow:\n  tracking_uri: http://my-mlflow-host:5000\n"
+    )
+
+    config = ProjectConfig.from_yaml(path)
+
+    assert config.mlflow_tracking_uri == "http://my-mlflow-host:5000"
+    assert config.tracking_uri is None
+
+
+def test_mlflow_tracking_uri_defaults_to_none(tmp_path):
+    path = tmp_path / "mlops.yaml"
+    path.write_text(MINIMAL_YAML)
+
+    config = ProjectConfig.from_yaml(path)
+
+    assert config.mlflow_tracking_uri is None
