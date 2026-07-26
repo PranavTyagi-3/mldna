@@ -76,6 +76,9 @@ dev = [
 [project.scripts]
 mldna = "mldna.cli.main:app"
 
+[tool.hatch.build.targets.sdist]
+exclude = [".claude", "spikes"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/mldna"]
 
