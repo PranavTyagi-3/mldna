@@ -49,8 +49,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/PranavTyagi-3/MLOps"
-Issues = "https://github.com/PranavTyagi-3/MLOps/issues"
+Repository = "https://github.com/PranavTyagi-3/mldna"
+Issues = "https://github.com/PranavTyagi-3/mldna/issues"
 
 [project.optional-dependencies]
 azure = [
