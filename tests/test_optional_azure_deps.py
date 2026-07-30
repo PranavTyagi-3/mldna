@@ -64,7 +64,7 @@ def test_configure_aml_auth_fails_cleanly_without_azure_extra(tmp_path):
     """)
     assert result.returncode == 0, result.stderr
     assert "EXIT_CODE 1" in result.stdout
-    assert 'pip install "mldna[azure]"' in result.stdout
+    assert 'pip install "mldna-lineage[azure]"' in result.stdout
     assert "Traceback" not in result.stdout
     assert (tmp_path / ".mldna" / "aml_auth.json").exists()
 
@@ -86,7 +86,7 @@ def test_init_dvc_azure_aad_fails_cleanly_without_azure_extra(tmp_path):
     """)
     assert result.returncode == 0, result.stderr
     assert "EXIT_CODE 1" in result.stdout
-    assert 'pip install "mldna[azure]"' in result.stdout
+    assert 'pip install "mldna-lineage[azure]"' in result.stdout
     assert "Traceback" not in result.stdout
 
 
@@ -109,7 +109,7 @@ def test_init_azure_ad_discovery_fails_cleanly_without_azure_extra(tmp_path):
     """)
     assert result.returncode == 0, result.stderr
     assert "EXIT_CODE 1" in result.stdout
-    assert 'pip install "mldna[azure]"' in result.stdout
+    assert 'pip install "mldna-lineage[azure]"' in result.stdout
     assert "Traceback" not in result.stdout
 
 
@@ -131,7 +131,7 @@ def test_bootstrap_path_fails_cleanly_without_azure_extra(tmp_path):
     """)
     assert result.returncode == 0, result.stderr
     assert "CLEAN_ERROR" in result.stdout
-    assert 'pip install "mldna[azure]"' in result.stdout
+    assert 'pip install "mldna-lineage[azure]"' in result.stdout
     assert "Traceback" not in result.stdout
 
 
@@ -155,5 +155,5 @@ def test_tracking_uri_path_fails_cleanly_without_azure_extra(tmp_path):
     """)
     assert result.returncode == 0, result.stderr
     assert "CLEAN_ERROR" in result.stdout
-    assert 'pip install "mldna[azure]"' in result.stdout
+    assert 'pip install "mldna-lineage[azure]"' in result.stdout
     assert "Traceback" not in result.stdout

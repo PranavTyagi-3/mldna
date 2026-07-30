@@ -74,7 +74,7 @@ def resolve_and_set_tracking_uri(workspace_dir):
         # UnsupportedModelRegistryStoreURIException that never mentions mldna
         # or the fix at all. Fail here instead, at config-resolution time.
         raise TrackingUriError(
-            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
+            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mldna-lineage[azure]" ({e})'
         )
 
     from mldna.azure.auth import resolve_aml_credential
@@ -100,7 +100,7 @@ def resolve_and_set_tracking_uri(workspace_dir):
         from mldna.azure.tracking import bootstrap_tracking_uri
     except ImportError as e:
         raise TrackingUriError(
-            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
+            f'Azure ML tracking needs the `azure` extra. Fix: pip install "mldna-lineage[azure]" ({e})'
         )
 
     credential, mode = resolve_aml_credential(workspace_dir)

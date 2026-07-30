@@ -7,7 +7,7 @@ def _import_blob_client():
         from azure.storage.blob import BlobServiceClient
     except ImportError as e:
         raise ImportError(
-            f'Azure Blob discovery needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
+            f'Azure Blob discovery needs the `azure` extra. Fix: pip install "mldna-lineage[azure]" ({e})'
         )
     return BlobServiceClient
 

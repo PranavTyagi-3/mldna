@@ -30,7 +30,7 @@ and a real Azure ML workspace).
 - **Three tracking backends**, switched by `mldna.yaml` alone: local file
   store (default, zero config), any plain MLflow server via
   `mlflow.tracking_uri`, or an Azure ML workspace.
-- **Azure adapter** (`pip install "mldna[azure]"`): AAD and service-principal
+- **Azure adapter** (`pip install "mldna-lineage[azure]"`): AAD and service-principal
   shared-secret auth on both the tracking and DVC-blob planes
   (`configure aml-auth` / `configure blob-auth`), workspace and blob-container
   discovery during `init`.

@@ -148,7 +148,7 @@ def _configure_azure_tracking(
         except ImportError:
             typer.echo(
                 "Azure ML workspace discovery needs the `azure` extra. "
-                'Fix: pip install "mldna[azure]"',
+                'Fix: pip install "mldna-lineage[azure]"',
                 err=True,
             )
             raise typer.Exit(1)
@@ -248,7 +248,7 @@ def _configure_dvc(
         except ImportError:
             typer.echo(
                 "An Azure Blob DVC remote needs the `azure` extra. "
-                'Fix: pip install "mldna[azure]"',
+                'Fix: pip install "mldna-lineage[azure]"',
                 err=True,
             )
             raise typer.Exit(1)

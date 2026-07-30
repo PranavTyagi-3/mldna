@@ -3,7 +3,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mldna"
+# Distribution name (what you `pip install`); the import name and CLI stay
+# `mldna`. They differ because PyPI rejected `mldna` as too similar to an
+# existing project `mdna` - same split as python-dotenv -> `import dotenv`.
+name = "mldna-lineage"
 version = "0.1.0"
 description = "A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned model consumption"
 readme = "README.md"

@@ -15,7 +15,7 @@ def _import_azure_identity():
         from azure.identity import ClientSecretCredential, DefaultAzureCredential
     except ImportError as e:
         raise ImportError(
-            f'Azure ML auth needs the `azure` extra. Fix: pip install "mldna[azure]" ({e})'
+            f'Azure ML auth needs the `azure` extra. Fix: pip install "mldna-lineage[azure]" ({e})'
         )
     return ClientSecretCredential, DefaultAzureCredential
 

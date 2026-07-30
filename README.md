@@ -113,9 +113,13 @@ reconstructed after the fact from logs or memory.
 ## Install
 
 ```bash
-pip install mldna                 # local-only: git + DVC + local MLflow
-pip install "mldna[azure]"        # adds the Azure ML backend
+pip install mldna-lineage                 # local-only: git + DVC + local MLflow
+pip install "mldna-lineage[azure]"        # adds the Azure ML backend
 ```
+
+The distribution is `mldna-lineage`; the import name and CLI are just `mldna`
+(`import mldna`, `mldna --help`) — the same split as `python-dotenv` →
+`import dotenv`.
 
 `mldna.core` never imports anything from `azure.*` — the local-only install
 has zero Azure dependencies, and the Azure backend is a strict additive
