@@ -7,7 +7,10 @@ build-backend = "hatchling.build"
 # `mldna`. They differ because PyPI rejected `mldna` as too similar to an
 # existing project `mdna` - same split as python-dotenv -> `import dotenv`.
 name = "mldna-lineage"
-version = "0.1.0"
+# Single source of truth: the __version__ literal in src/mldna/__init__.py.
+# Scaffolding emits `mldna-lineage=={__version__}` pins, so a drift between a
+# hand-synced pyproject literal and the module would ship an uninstallable pin.
+dynamic = ["version"]
 description = "A lineage layer for ML teams: DVC + MLflow glue with content-addressed model lineage, gated publishing, and lockfile-pinned model consumption"
 readme = "README.md"
 license = { text = "MIT" }
@@ -71,13 +74,21 @@ azure = [
     # code path at all.
     "setuptools<81",
 ]
+ui = [
+    "fastapi",
+    "uvicorn",
+]
 dev = [
     "pytest",
     "pytest-xdist",
+    "httpx",  # FastAPI's TestClient, for tests/ui
 ]
 
 [project.scripts]
 mldna = "mldna.cli.main:app"
+
+[tool.hatch.version]
+path = "src/mldna/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [".claude", "spikes"]

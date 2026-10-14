@@ -4,6 +4,7 @@ from pathlib import Path
 from mldna.core import blobauth, dvc, git
 from mldna.core.config import ProjectConfig
 from mldna.core.lock import RunLock
+from mldna.core.push import failure_text
 
 
 class PullError(Exception):
@@ -13,7 +14,7 @@ class PullError(Exception):
 def _run_dvc(args, cwd, hint):
     result = dvc.run(args, cwd=cwd, check=False)
     if result.returncode != 0:
-        raise PullError(f"{hint}: {result.stderr.strip()}")
+        raise PullError(f"{hint}: {failure_text(result)}")
     return result
 
 
@@ -41,11 +42,21 @@ def pull(workspace_dir):
     try:
         git.pull_branch(workspace_dir, branch)
     except subprocess.CalledProcessError as e:
-        raise PullError(f"git pull failed: {e.stderr.strip()}")
+        # git writes CONFLICT lines to stdout and progress noise to
+        # stderr, so both are surfaced - on separate lines, since a
+        # colon-joined chain of them is unreadable.
+        msg_parts = ["git pull failed:"]
+        if e.stdout and e.stdout.strip():
+            msg_parts.append(e.stdout.strip())
+        if e.stderr and e.stderr.strip():
+            msg_parts.append(e.stderr.strip())
+        raise PullError("\n".join(msg_parts))
 
     remote_name = blobauth.get_default_remote(workspace_dir)
     if remote_name:
-        blobauth.resolve_env_override(workspace_dir, remote_name)
+        remote_url = blobauth.get_remote_url(workspace_dir, remote_name)
+        if remote_url and blobauth.is_azure_remote(remote_url):
+            blobauth.resolve_env_override(workspace_dir, remote_name)
 
     _run_dvc(
         ["pull", "-q"], workspace_dir,

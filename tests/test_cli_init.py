@@ -17,6 +17,31 @@ def test_init_scaffolds_project(tmp_path):
     assert "Initialized producer project 'fraud-detector'" in result.stdout
 
 
+def test_init_writes_namespace_automatically(tmp_path):
+    # issue #16: zero friction - nobody has to type a namespace, init derives
+    # one from the project directory name.
+    project = tmp_path / "alice-fraud-detector"
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(project),
+        "--tracking-source", "local", "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 0
+    config = yaml.safe_load((project / "mldna.yaml").read_text())
+    assert config["project"]["namespace"] == "alice-fraud-detector"
+
+
+def test_init_namespace_flag_overrides_the_default(tmp_path):
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path), "--namespace", "alice",
+        "--tracking-source", "local", "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 0
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
+    assert config["project"]["namespace"] == "alice"
+
+
 def test_init_local_tracking_source_has_no_azure_section(tmp_path):
     runner.invoke(app, [
         "init", "fraud-detector", "--dir", str(tmp_path),
@@ -169,6 +194,167 @@ def test_init_mlflow_flag_does_not_reprompt_when_already_configured(tmp_path):
     assert config["mlflow"] == {"tracking_uri": "http://my-mlflow-host:5000"}
 
 
+def test_init_unknown_tracking_source_refuses(tmp_path):
+    # Used to configure nothing at all, silently.
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path),
+        "--tracking-source", "databricks", "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 1
+    assert "Unknown --tracking-source 'databricks'" in result.output
+    assert "local | mlflow | azure | filesystem" in result.output
+    assert not (tmp_path / "mldna.yaml").exists()
+
+
+def test_init_filesystem_tracking_source_writes_resolvable_section(tmp_path):
+    store = tmp_path.parent / "shared-mlruns"
+    store.mkdir(exist_ok=True)
+    project = tmp_path / "project"
+
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(project),
+        "--tracking-source", "filesystem", "--filesystem-path", str(store),
+        "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 0
+    config = yaml.safe_load((project / "mldna.yaml").read_text())
+    assert config["filesystem"] == {"path": str(store)}
+    assert "mlflow" not in config and "azure" not in config
+
+    from mldna.trackinguri import resolve_and_set_tracking_uri
+    uri, mode = resolve_and_set_tracking_uri(project)
+    assert uri == f"file:{store.resolve()}"
+    assert mode == "filesystem store"
+
+
+def test_init_filesystem_path_prompted_when_flag_omitted(tmp_path):
+    store = tmp_path.parent / "prompted-mlruns"
+    store.mkdir(exist_ok=True)
+    project = tmp_path / "project"
+
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(project),
+        "--tracking-source", "filesystem", "--dvc-backend", "skip",
+    ], input=f"{store}\n")
+
+    assert result.exit_code == 0
+    assert "Path to an existing MLflow file store" in result.output
+    config = yaml.safe_load((project / "mldna.yaml").read_text())
+    assert config["filesystem"] == {"path": str(store)}
+
+
+def test_init_bare_menu_offers_filesystem_option(tmp_path):
+    store = tmp_path.parent / "menu-mlruns"
+    store.mkdir(exist_ok=True)
+    project = tmp_path / "project"
+
+    # "4" = Shared filesystem store, then the path, then "3" = skip DVC.
+    result = runner.invoke(
+        app, ["init", "fraud-detector", "--dir", str(project)],
+        input=f"4\n{store}\n3\n",
+    )
+
+    assert result.exit_code == 0
+    assert "Shared filesystem store (existing path)" in result.output
+    config = yaml.safe_load((project / "mldna.yaml").read_text())
+    assert config["filesystem"] == {"path": str(store)}
+
+
+def test_init_consumer_filesystem_path_writes_section(tmp_path):
+    store = tmp_path.parent / "consumer-mlruns"
+    store.mkdir(exist_ok=True)
+
+    result = runner.invoke(app, [
+        "init", "--dir", str(tmp_path), "--consumer", "--filesystem-path", str(store),
+    ])
+
+    assert result.exit_code == 0
+    config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
+    assert config["filesystem"] == {"path": str(store)}
+
+
+def test_init_filesystem_flag_does_not_reprompt_when_already_configured(tmp_path):
+    store = tmp_path.parent / "reprompt-mlruns"
+    store.mkdir(exist_ok=True)
+    project = tmp_path / "project"
+    runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(project),
+        "--filesystem-path", str(store), "--dvc-backend", "skip",
+    ])
+
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(project),
+        "--filesystem-path", str(tmp_path.parent / "other"), "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 0
+    assert "already has a tracking source configured" in result.output
+    config = yaml.safe_load((project / "mldna.yaml").read_text())
+    assert config["filesystem"] == {"path": str(store)}
+
+
+def test_init_azure_dvc_does_not_write_connection_string_to_local_remote(tmp_path, monkeypatch):
+    # An existing local default remote is left alone by configure_dvc_remote,
+    # so the connection string must not land on it either.
+    from mldna.core import dvc
+    from mldna.core.scaffold import scaffold_producer
+
+    scaffold_producer(tmp_path, "fraud-detector")
+    dvc.run(["remote", "add", "-d", "local-remote", str(tmp_path.parent / "store")], cwd=tmp_path)
+    monkeypatch.setattr(
+        "mldna.azure.blob.list_containers_via_connection_string",
+        lambda connection_string: ["alpha"],
+    )
+
+    result = runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(tmp_path),
+        "--tracking-source", "local", "--dvc-backend", "azure",
+        "--blob-auth-mode", "connection-string",
+        "--connection-string", "DefaultEndpointsProtocol=https;AccountName=myacct;AccountKey=xxx",
+        "--dvc-container", "alpha", "--dvc-prefix", "fraud-detector",
+    ])
+
+    assert result.exit_code == 0
+    assert "is not an Azure Blob remote" in result.output
+    config_local = tmp_path / ".dvc" / "config.local"
+    assert "AccountKey" not in (config_local.read_text() if config_local.exists() else "")
+
+
+def test_init_refuses_in_subfolder_of_existing_project(tmp_path):
+    parent = tmp_path / "parent"
+    runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(parent),
+        "--tracking-source", "local", "--dvc-backend", "skip",
+    ])
+    child = parent / "nested" / "sub"
+
+    result = runner.invoke(app, [
+        "init", "other-model", "--dir", str(child),
+        "--tracking-source", "local", "--dvc-backend", "skip",
+    ])
+
+    assert result.exit_code == 1
+    assert str(parent / "mldna.yaml") in result.output
+    assert "mldna init" not in result.output
+    assert not (child / "mldna.yaml").exists()
+
+
+def test_init_consumer_refuses_in_subfolder_of_existing_project(tmp_path):
+    parent = tmp_path / "parent"
+    runner.invoke(app, [
+        "init", "fraud-detector", "--dir", str(parent),
+        "--tracking-source", "local", "--dvc-backend", "skip",
+    ])
+    child = parent / "nested"
+
+    result = runner.invoke(app, ["init", "--dir", str(child), "--consumer"])
+
+    assert result.exit_code == 1
+    assert str(parent / "mldna.yaml") in result.output
+
+
 def test_init_without_model_name_requires_consumer_flag(tmp_path):
     result = runner.invoke(app, ["init", "--dir", str(tmp_path)])
 
@@ -294,3 +480,36 @@ def test_init_consumer_azure_flag_writes_azure_section_only(tmp_path):
     config = yaml.safe_load((tmp_path / "mldna.yaml").read_text())
     assert config["azure"] == {"subscription_id": "sub", "resource_group": "rg", "workspace": "ws"}
     assert "dvc" not in config
+
+
+def test_id_verb_is_idempotent(tmp_path):
+    (tmp_path / "mldna.yaml").write_text("project:\n  model_name: m\n  namespace: ns\n")
+
+    first = runner.invoke(app, ["id", "--dir", str(tmp_path)])
+    written = yaml.safe_load((tmp_path / "mldna.yaml").read_text())["project"]["model_id"]
+    second = runner.invoke(app, ["id", "--dir", str(tmp_path)])
+
+    assert first.exit_code == 0 and "Commit mldna.yaml" in first.stdout
+    assert second.exit_code == 0 and "already" in second.stdout
+    assert yaml.safe_load((tmp_path / "mldna.yaml").read_text())["project"]["model_id"] == written
+
+
+def test_id_new_replaces_the_id_and_warns(tmp_path):
+    # D#77: a project copied from another must be able to shed the copied id.
+    (tmp_path / "mldna.yaml").write_text(
+        "project:\n  model_name: m\n  namespace: ns\n  model_id: copied-id\n")
+
+    result = runner.invoke(app, ["id", "--new", "--dir", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "will now refuse this project" in result.stdout
+    assert yaml.safe_load((tmp_path / "mldna.yaml").read_text())["project"]["model_id"] != "copied-id"
+
+
+def test_init_generates_model_id(tmp_path):
+    runner.invoke(app, [
+        "init", "m", "--dir", str(tmp_path),
+        "--tracking-source", "local", "--dvc-backend", "skip",
+    ])
+
+    assert yaml.safe_load((tmp_path / "mldna.yaml").read_text())["project"]["model_id"]

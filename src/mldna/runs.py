@@ -3,7 +3,7 @@ from pathlib import Path
 
 import mlflow
 
-from mldna.core.config import ProjectConfig
+from mldna.core.config import ProjectConfig, missing_namespace_hint, missing_project_hint
 from mldna.trackinguri import resolve_and_set_tracking_uri
 
 DEFAULT_LAST = 20
@@ -23,19 +23,20 @@ def list_runs(workspace_dir=".", last=DEFAULT_LAST):
     workspace_dir = Path(workspace_dir)
     config_path = workspace_dir / "mldna.yaml"
     if not config_path.exists():
-        raise RunsError(
-            "mldna.yaml not found. Fix: run `mldna init <model-name>` in a producer project first."
-        )
+        # Never suggest init over an existing parent project (D#57).
+        raise RunsError(missing_project_hint(workspace_dir))
     config = ProjectConfig.from_yaml(config_path)
     if not config.model_name:
         raise RunsError(
             "mldna.yaml has no project.model_name - mldna runs only works in a producer "
             "project. Fix: set project.model_name in mldna.yaml."
         )
+    if not config.namespace:
+        raise RunsError(missing_namespace_hint(workspace_dir))
 
     resolve_and_set_tracking_uri(workspace_dir)
     client = mlflow.tracking.MlflowClient()
-    experiment = client.get_experiment_by_name(config.model_name)
+    experiment = client.get_experiment_by_name(config.full_model_name())
     if experiment is None:
         return []
 

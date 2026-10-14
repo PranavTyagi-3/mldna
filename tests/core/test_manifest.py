@@ -14,7 +14,12 @@ def _fake_run(tags):
 def test_build_manifest_pkl_only(tmp_path):
     pkl = tmp_path / "model.pkl"
     pkl.write_bytes(b"trained model")
-    run = _fake_run({"git_commit": "abc123", "dvc_data_hash": "d4e5f6", "save_context": "in_run"})
+    run = _fake_run({
+        "git_commit": "abc123",
+        "dvc_data_hash__0": "d4e5f6.dir:dataset",
+        "dvc_data_hash__1": "a1b2c3.dir:features",
+        "save_context": "in_run",
+    })
     resolved = ResolvedRun(run_id="run-1", relpath="models/model.pkl")
 
     manifest = build_manifest("fraud-detector", run, resolved, pkl, [], {}, "priya", "2026-01-01T00:00:00Z")
@@ -23,7 +28,11 @@ def test_build_manifest_pkl_only(tmp_path):
     assert manifest["source_run_id"] == "run-1"
     assert manifest["formats"]["pkl"]["sha256"] == sha256_file(pkl)
     assert manifest["formats"].keys() == {"pkl"}
-    assert manifest["lineage"] == {"git_commit": "abc123", "dvc_data_hash": "d4e5f6"}
+    # D#63: consumer-visible shape is a per-out mapping under a plural key.
+    assert manifest["lineage"] == {
+        "git_commit": "abc123",
+        "dvc_data_hashes": {"dataset": "d4e5f6.dir", "features": "a1b2c3.dir"},
+    }
     assert manifest["conversions"] == {}
 
 
@@ -35,7 +44,7 @@ def test_build_manifest_with_format_dir_and_conversions(tmp_path):
     (onnx_dir / "model.onnx").write_bytes(b"converted bytes")
     onnx_sha = sha256_file(onnx_dir / "model.onnx")
 
-    run = _fake_run({"git_commit": "abc123", "dvc_data_hash": "d4e5f6"})
+    run = _fake_run({"git_commit": "abc123", "dvc_data_hash__0": "d4e5f6.dir:dataset"})
     resolved = ResolvedRun(run_id="run-1", relpath="models/model.pkl")
     conversions = {
         onnx_sha: {"relpath": "models/onnx/model.onnx", "source_pkl_sha256": "x", "at": "t"},
@@ -48,6 +57,19 @@ def test_build_manifest_with_format_dir_and_conversions(tmp_path):
     assert manifest["formats"]["onnx"]["files"] == {"model.onnx": onnx_sha}
     assert manifest["conversions"] == {onnx_sha: conversions[onnx_sha]}
     assert manifest["save_context"] == "in_run"
+
+
+def test_build_manifest_lineage_from_a_legacy_single_hash_run(tmp_path):
+    # A pre-D#63 run's bare tag described the root `dataset` out, so it lands
+    # in the same per-out mapping rather than a second field shape (D#63).
+    pkl = tmp_path / "model.pkl"
+    pkl.write_bytes(b"trained model")
+    run = _fake_run({"git_commit": "abc123", "dvc_data_hash": "d4e5f6.dir"})
+    resolved = ResolvedRun(run_id="run-1", relpath="models/model.pkl")
+
+    manifest = build_manifest("fraud-detector", run, resolved, pkl, [], {}, "priya", "t")
+
+    assert manifest["lineage"]["dvc_data_hashes"] == {"dataset": "d4e5f6.dir"}
 
 
 def test_resolve_format_missing_lists_available():

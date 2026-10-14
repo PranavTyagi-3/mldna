@@ -42,6 +42,35 @@ def test_configure_aml_auth_clear(tmp_path):
     assert not (tmp_path / ".mldna" / "aml_auth.json").exists()
 
 
+def test_configure_blob_auth_refuses_non_azure_remote(producer_repo):
+    # The default remote is a local folder: a connection string would never be
+    # read, so nothing may be written to .dvc/config.local.
+    before = (producer_repo / ".dvc" / "config.local").exists()
+
+    result = runner.invoke(app, [
+        "configure", "blob-auth",
+        "--connection-string", "DefaultEndpointsProtocol=https;secret=1",
+        "--dir", str(producer_repo),
+    ])
+
+    assert result.exit_code == 1
+    assert "is not an Azure Blob remote" in result.output
+    assert "local-remote" in result.output
+    assert "mldna configure blob-auth --remote" in result.output
+    config_local = producer_repo / ".dvc" / "config.local"
+    assert config_local.exists() is before
+    assert "secret=1" not in (config_local.read_text() if config_local.exists() else "")
+
+
+def test_configure_blob_auth_clear_allowed_on_non_azure_remote(producer_repo):
+    # Clearing is harmless and idempotent anywhere - it is how a project
+    # cleans up a connection string left behind by an earlier azure:// url.
+    result = runner.invoke(app, ["configure", "blob-auth", "--clear", "--dir", str(producer_repo)])
+
+    assert result.exit_code == 0
+    assert "Cleared local connection string for remote 'local-remote'" in result.output
+
+
 def test_configure_blob_auth_writes_connection_string(tmp_path):
     repo = _azure_remote_repo(tmp_path)
 

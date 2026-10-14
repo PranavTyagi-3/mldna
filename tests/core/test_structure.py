@@ -42,5 +42,25 @@ def test_junk_files_refused(tmp_path):
     (dirs[0] / "__pycache__").mkdir()
     (dirs[0] / "__pycache__" / "cache.pyc").write_bytes(b"junk")
 
+    with pytest.raises(StructureError, match="Junk files") as excinfo:
+        check_structure(pkl, dirs)
+
+    assert "Fix: delete these files, then re-run mldna publish." in str(excinfo.value)
+
+
+def test_checkpoint_substring_in_filename_allowed(tmp_path):
+    # #29: a legitimate model name containing "checkpoint" must not be
+    # condemned by a filename substring match.
+    pkl = tmp_path / "best_checkpoint.pkl"
+    pkl.write_bytes(b"x")
+
+    check_structure(pkl, [])
+
+
+def test_file_in_checkpoint_directory_still_refused(tmp_path):
+    pkl, dirs = _make_bundle(tmp_path, {"openvino": {"model.xml": b"x"}})
+    (dirs[0] / "checkpoints").mkdir()
+    (dirs[0] / "checkpoints" / "epoch5.pt").write_bytes(b"junk")
+
     with pytest.raises(StructureError, match="Junk files"):
         check_structure(pkl, dirs)

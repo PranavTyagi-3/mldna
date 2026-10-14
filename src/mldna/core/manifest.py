@@ -2,7 +2,10 @@ from pathlib import Path
 
 import yaml
 
-from mldna.core import hashing
+from mldna.core import hashing, tags as tagschema
+
+
+INVOCATION_LABEL = "recorded, not verified"
 
 
 class ManifestError(Exception):
@@ -18,7 +21,7 @@ def _format_files(format_dir):
 
 
 def build_manifest(model_name, run, resolved, pkl_path, format_dirs,
-                    conversions, published_by, published_at):
+                    conversions, published_by, published_at, model_id=None):
     pkl_path = Path(pkl_path)
     formats = {
         "pkl": {"path": pkl_path.name, "sha256": hashing.sha256_file(pkl_path)},
@@ -35,9 +38,10 @@ def build_manifest(model_name, run, resolved, pkl_path, format_dirs,
     }
 
     tags = run.data.tags
-    return {
-        "manifest_version": 1,
+    manifest = {
+        "manifest_version": 2,
         "model_name": model_name,
+        "model_id": model_id,
         "source_run_id": resolved.run_id,
         "resolved_by": "content_hash",
         "save_context": tags.get("save_context", "in_run"),
@@ -47,9 +51,23 @@ def build_manifest(model_name, run, resolved, pkl_path, format_dirs,
         "conversions": used_conversions,
         "lineage": {
             "git_commit": tags.get("git_commit"),
-            "dvc_data_hash": tags.get("dvc_data_hash"),
+            # Plural and a mapping since D#63: a consumer reading the old
+            # scalar key gets a loud KeyError instead of a dict where it
+            # expected a string.
+            "dvc_data_hashes": tagschema.data_hashes_from_tags(tags),
         },
     }
+    if tags.get(tagschema.INVOCATION_ARGV):
+        # Captured at run time, never checked against what the code did (D#70).
+        invocation = {"status": INVOCATION_LABEL, "argv": tags[tagschema.INVOCATION_ARGV]}
+        if tags.get(tagschema.INVOCATION_ENV):
+            invocation["env"] = tags[tagschema.INVOCATION_ENV]
+        manifest["lineage"]["invocation"] = invocation
+    if resolved.auto_resolved_note:
+        # A multi-run resolution is a weaker link than a unique hash match, so it
+        # travels with the bundle and not only the prompt (D#5, invariant 10).
+        manifest["resolution_note"] = resolved.auto_resolved_note
+    return manifest
 
 
 def write_manifest(manifest, path):

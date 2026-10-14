@@ -39,16 +39,20 @@ proves lineage from the outside, by *fingerprinting and gating* instead of
 Two rules, held in tension on purpose:
 
 - **Zero workflow prescription.** Train however you want. Any framework, any
-  script structure, model files saved anywhere with any name.
+  script structure, model files saved with any name — anywhere except the
+  directories `mldna` treats as disposable scratch and never scans
+  (`outputs/`, `mlruns/`, `dataset/`).
 - **Strong guarantees anyway.** Every claim `mldna` makes about a model is
   backed by a cryptographic fact — a content hash, a clean git tree, a
   reachable commit — never by convention or trust.
 
 And critically: when a guarantee *can't* be made at full strength, `mldna`
-never hides it. A run trained on a dirty working tree, a model saved after
-training ended, a converted file lacking provenance — all of these are
-allowed to exist, but they are permanently and visibly labeled as weaker
-links, not silently smoothed over.
+never hides it. A run trained on a dirty working tree, a run whose completion
+was recorded after the fact with `mldna attach`, a converted file whose
+numerical equivalence was never checked — all of these are allowed to exist,
+but they are permanently and visibly labeled as weaker links, not silently
+smoothed over. A model saved outside a `with mldna.track_run():` block is not
+a weaker link: it is unpublishable.
 
 ## What it actually guarantees
 
@@ -62,8 +66,8 @@ links, not silently smoothed over.
    the code that executed. Publishing can push an existing commit to make it
    reachable — it can never create one. History is recorded, never
    manufactured after the fact.
-3. **Honest confidence labels, always.** In-run saves vs. post-run saves,
-   dirty runs, conversion provenance — all recorded as tags and surfaced at
+3. **Honest confidence labels, always.** Dirty runs, runs attached after the
+   fact, conversion provenance — all recorded as tags and surfaced at
    publish time, before a version is minted, not buried in a log somewhere.
 4. **Concurrency-safe by default.** A per-directory run lock turns silent
    lineage corruption from concurrent runs into a loud, explanatory error
@@ -91,7 +95,7 @@ consumer app
   └─ models.lock.yaml pins → registry version 9
         └─ registered from → training run a1b2c3
               ├─ tag git_commit      → exact code snapshot (verified clean at train time)
-              ├─ tag dvc_data_hash   → exact dataset snapshot
+              ├─ tag dvc_data_hash__<n> → exact dataset snapshot (one per DVC out)
               ├─ tag model_sha256   → exact bytes of the published file
               ├─ tag user / published_by
               └─ captured environment (pip freeze) → exact dependency set
@@ -130,33 +134,111 @@ layer on top.
 ```bash
 # Producer repo (where a model gets trained)
 mldna init my-model          # scaffold dataset/, models/, mldna.yaml, .gitignore
-mldna push -m "add training data"   # dvc add + git commit + dvc push + git push
+mldna stage                  # dvc add + git add (honors .gitignore), then lists what will be committed
+# review the staged files in your editor's source control view; add unwanted ones to .gitignore and re-run stage
+mldna push -m "add training data"   # shows the files, confirms, then git commit + dvc push + git push
 
 # in your training script:
 #   with mldna.track_run():
 #       ... train, save your model file anywhere under models/ ...
 
-mldna publish models/model.pkl my-model     # runs the full publish gate chain
+mldna publish models/model.pkl              # runs the full publish gate chain
 ```
 
 ```bash
 # Consumer repo (where a published model gets used)
 mldna init --consumer
-# edit models.lock.yaml: pin { model: my-model, version: 9, format: pkl }
+# edit models.lock.yaml: pin  <namespace>-my-model: { id: <model-id>, version: 9, format: pkl, dest: ./models/my-model }
 mldna fetch                  # verifies checksums, swaps in atomically
 ```
+
+The name in the lockfile is the registry name: the producer's `project.namespace`
+and model name joined by a dash (namespace `acme`, model `my-model` →
+`acme-my-model`). With no namespace set it is just the model name.
+
+The scaffolded `mldna.yaml` carries a commented block documenting the optional
+settings `mldna` parses but does not require — `tracking.model_globs`,
+`tracking.scan_exclude` and `publish.require_formats`. Uncomment what you need;
+an untouched scaffold behaves exactly as if they were absent.
+
+`track_run` does not record the command line by default: arguments such as
+`--api-key` would become a run tag readable by everyone with access to the
+tracking server. Set `tracking.record_argv: true` to opt in.
+
+If your project saves XGBoost or LightGBM models to `.json` or `.txt` (their
+native defaults), add these patterns to `tracking.model_globs`. These extensions
+are not in the built-in list because they are too generic — every `config.json`
+and `requirements.txt` would otherwise be claimed as a model file. In `mldna.yaml`:
+
+```yaml
+tracking:
+  model_globs:
+    - "*.json"      # XGBoost
+    - "*.txt"       # LightGBM
+```
+
+Config patterns in this field append to the defaults, so you keep the full
+built-in set plus your custom globs.
+
+### Local mode: pointing a consumer at the producer's store
+
+With no tracking backend configured, MLflow runs and published bundles live in
+`./mlruns` **of the repo that created them**. A consumer repo is a different
+directory, so by default `mldna fetch` there would look in its own empty store
+and refuse with "not found in the registry". Give the consumer a `filesystem:`
+section naming the producer's store:
+
+```yaml
+# consumer repo — mldna.yaml
+project:
+  repo_role: consumer
+filesystem:
+  path: "${MLDNA_TRACKING_ROOT}/fraud-detector/mlruns"   # or ../fraud-detector/mlruns
+```
+
+Any directory both repos can read works — a sibling folder, a shared drive, an
+NFS/SMB mount. The path may be absolute, relative to the repo root, or use
+environment variables and `~`, so one committed value resolves per machine. It
+must already exist: `mldna` refuses with the resolved absolute path rather than
+create an empty store (which would make a typo or an unexpanded variable look
+like a missing model version). `mldna runs`/`fetch`/`publish` report this as
+`Tracking mode: filesystem store` — never as a remote server.
+
+**Local mode is single-user.** Each repository clone keeps its own gitignored
+`mlruns/` store, so two developers training in local mode each have a different
+"churn-model v1" and a pinned model version resolves to whichever copy exists
+in that particular developer's store. A shared team setup needs either a
+filesystem store both repositories can read from, or a real `mlflow server`.
+
+MLflow's file-based store has no locking, so a shared folder is safe for the
+producer → consumer handoff and read-mostly sharing. If several developers need
+to create runs in the same store concurrently, this is a corruption risk — run a
+plain `mlflow server` and use the `mlflow:` section instead.
+
+## Model id
+
+Registry names are user-chosen, so two repos can collide on `<namespace>-<model>`.
+Each producer project therefore carries an immutable `project.model_id` in
+`mldna.yaml`: `mldna init` generates one, and existing projects run `mldna id`
+once and commit the change. `publish` refuses without it, stamps it on the
+registered model, and refuses if that registry name already belongs to another
+id. Consumers add the printed `id:` to their `models.lock.yaml` pin and `fetch`
+refuses on a mismatch; a pin without `id:` still works but is flagged as
+unverified.
 
 ## CLI surface
 
 | Command | What it does |
 |---|---|
 | `mldna init [name] [--consumer] [--azure]` | Scaffold a producer or consumer repo |
-| `mldna push` | `dvc add` → commit → `dvc push` → `git push`, idempotently |
-| `mldna publish <file> <model_name>` | Resolve the run by content hash, run every gate, register a version |
+| `mldna stage` | `dvc add` → `git add`, unstages anything now in `.gitignore`, then lists the staged files for review; commits nothing, safe to re-run |
+| `mldna push -m <msg>` | Commit what is staged → `dvc push` → `git push`, idempotently; stages nothing itself; lists the files and asks `Commit these N files? [y/N]` every time, flagging large or model-shaped files and a shrinking dataset (`--yes` to skip the question) |
+| `mldna id` | Give the project its unique model id in `mldna.yaml` (idempotent; commit the result) |
+| `mldna publish <file> [--formats DIR...]` | Resolve the run by content hash, run every gate, register a version (model name comes from `mldna.yaml`) |
 | `mldna fetch` | Pull every pinned version in `models.lock.yaml`, checksum-verified |
 | `mldna pull` | Producer-side: sync code/data, then pull this commit's published bundle if any |
-| `mldna runs [--last N]` | Table of recent runs for this project |
-| `mldna doctor` | Independent health checks: tools, auth, git remote, `.gitignore`, committed secrets |
+| `mldna runs [--last N]` | Table of recent runs for this project (the KEY METRIC column stays `-` until you set `tracking.key_metric: <name>` in `mldna.yaml` — it never guesses which metric you meant) |
+| `mldna doctor` | Independent health checks: tools, auth, git remote, `.gitignore`, large tracked files |
 | `mldna configure aml-auth` / `configure blob-auth` | Store shared-secret credentials for machines without personal Azure AD access |
 
 Python API: `mldna.track_run()` (context manager around training),
@@ -170,7 +252,10 @@ pull request against `models.lock.yaml` in the consuming repo — reviewed like
 any other code change, with the git history of that file as the full audit
 trail of what ran where and who approved it. The one exception is a kill
 switch: an admin-set `recalled` tag on a bad version, which consumer tooling
-*fails* on (never just warns) if it's ever pinned.
+*fails* on (never just warns) if it's ever pinned — including a re-run of
+`mldna fetch` when the recalled model is already on disk. A running app is not
+stopped; the failed fetch is what must stop the next deploy, so treat a
+non-zero exit from `mldna fetch` in CI as a failed deploy.
 
 ## Project status
 

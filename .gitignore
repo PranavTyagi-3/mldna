@@ -29,3 +29,5 @@ Thumbs.db
 # Project docs — kept local, not committed
 CLAUDE.md
 docs/
+
+*.txt

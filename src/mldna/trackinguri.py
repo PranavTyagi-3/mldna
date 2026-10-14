@@ -1,3 +1,5 @@
+import os
+import re
 import sys
 from pathlib import Path
 
@@ -6,6 +8,8 @@ import mlflow
 from mldna.core.config import ProjectConfig
 
 AZURE_KEYS = ("subscription_id", "resource_group", "workspace")
+TRACKING_SECTIONS = ("azure", "mlflow", "filesystem")
+FILESYSTEM_MODE = "filesystem store"
 
 
 class TrackingUriError(Exception):
@@ -32,36 +36,107 @@ def _make_stdout_unicode_safe():
         sys.stdout.reconfigure(errors="replace")
 
 
+def _bound_http_retries():
+    # mlflow's shipped retry policy is tuned for a managed cloud endpoint that
+    # rate-limits for minutes: 7 retries at backoff_factor 2 sleeps
+    # 0+4+9+16+32+64+120 (urllib3 skips the first backoff and caps each sleep at
+    # 120) = ~246s of pure waiting before a down server is ever reported. That
+    # is the whole of the ~4min publish / ~4.5min fetch + doctor stalls a user
+    # measured against a self-hosted server. 3 retries at factor 1 sleeps
+    # 0+2+4 = 6s (~9s worst case with mlflow's 1.0s jitter), still enough to
+    # ride out a dropped connection or a brief restart. Only the *number and
+    # spacing of retries* is bounded - MLFLOW_HTTP_REQUEST_TIMEOUT and the
+    # artifact-plane timeouts stay at mlflow's generous defaults, because a
+    # multi-GB bundle transfer legitimately needs them. setdefault, so an
+    # operator who needs mlflow's original patience just sets the env var.
+    os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "3")
+    os.environ.setdefault("MLFLOW_HTTP_REQUEST_BACKOFF_FACTOR", "1")
+
+
+def _resolve_filesystem_store(workspace_dir, configured_path):
+    if not configured_path:
+        raise TrackingUriError(
+            "mldna.yaml has a filesystem: section but no path key. "
+            "Fix: add `path: \"/shared/mlruns\"` under filesystem: (absolute, "
+            "repo-relative, or containing any environment variable your shell "
+            "defines, such as $SHARED_DRIVE), or remove the filesystem: section "
+            "entirely to use local tracking."
+        )
+
+    # expandvars/expanduser so one committed value resolves per machine:
+    # mldna.yaml is committed, and an absolute path is correct on exactly one
+    # developer's disk.
+    expanded = os.path.expanduser(os.path.expandvars(str(configured_path)))
+    unset = re.findall(r"\$(?:\{(\w+)\}|(\w+))", expanded)
+    if unset:
+        names = ", ".join(a or b for a, b in unset)
+        raise TrackingUriError(
+            f"{names} is not set (filesystem.path in mldna.yaml uses it). "
+            f"Fix: set {names}, or use a literal path."
+        )
+    path = Path(expanded)
+    if not path.is_absolute():
+        path = Path(workspace_dir) / path
+    path = path.resolve()
+
+    if not path.exists():
+        raise TrackingUriError(
+            f"mldna.yaml's filesystem: path does not exist (resolved to {path}). "
+            "mldna will not create a tracking store it was told to read, because "
+            "an empty one would report every pinned version as not found in the "
+            "registry. Fix: correct `path:` under filesystem: in mldna.yaml, or "
+            f"create the store: mkdir -p {path}"
+        )
+
+    return f"file:{path}"
+
+
 def resolve_and_set_tracking_uri(workspace_dir):
     config = _load_config(workspace_dir)
 
-    has_mlflow_section = config is not None and "mlflow" in config.raw
-    has_azure_section = config is not None and "azure" in config.raw
+    sections = [s for s in TRACKING_SECTIONS if config is not None and s in config.raw]
 
-    if has_mlflow_section and has_azure_section:
+    if len(sections) > 1:
+        named = ", ".join(f"{s}:" for s in sections)
         raise TrackingUriError(
-            "mldna.yaml has both mlflow: and azure: sections - only one tracking "
-            "source may be configured. Fix: remove the mlflow: section to use "
-            "Azure ML, or remove the azure: section to use the remote MLflow server."
+            f"mldna.yaml has {named} sections - only one tracking source may be "
+            "configured, so the resolved tracking URI is never ambiguous. "
+            "Fix: delete all but one of those sections from mldna.yaml."
         )
 
-    if has_mlflow_section:
+    if "mlflow" in sections:
         if not config.mlflow_tracking_uri:
             raise TrackingUriError(
                 "mldna.yaml has an mlflow: section but no tracking_uri key. "
-                "Fix: add `tracking_uri: \"http://host:port\"` under mlflow:, or "
-                "remove the mlflow: section entirely to use local tracking."
+                "Fix: add `tracking_uri: \"http://host:port\"` under mlflow: for an "
+                "MLflow server, or use a `filesystem:` section with a `path:` key to "
+                "read an existing file-based store, or remove the mlflow: "
+                "section entirely to use local tracking."
             )
+        if config.mlflow_tracking_uri.startswith("file:"):
+            # A file: URI under mlflow: is a file-based store on disk, not a
+            # server - mlflow accepts it either way, but reporting it as
+            # "remote mlflow server" would misdescribe what is in use, so it
+            # gets the filesystem label (D#39).
+            mlflow.set_tracking_uri(config.mlflow_tracking_uri)
+            return config.mlflow_tracking_uri, FILESYSTEM_MODE
         _make_stdout_unicode_safe()
+        _bound_http_retries()
         mlflow.set_tracking_uri(config.mlflow_tracking_uri)
         return config.mlflow_tracking_uri, "remote mlflow server"
 
-    if not has_azure_section:
+    if "filesystem" in sections:
+        uri = _resolve_filesystem_store(workspace_dir, config.filesystem_path)
+        mlflow.set_tracking_uri(uri)
+        return uri, FILESYSTEM_MODE
+
+    if "azure" not in sections:
         uri = f"file:{Path(workspace_dir) / 'mlruns'}"
         mlflow.set_tracking_uri(uri)
         return uri, "local"
 
     _make_stdout_unicode_safe()
+    _bound_http_retries()
 
     try:
         import azureml.mlflow  # noqa: F401 - registers the "azureml" mlflow store scheme
