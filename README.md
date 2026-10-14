@@ -240,10 +240,37 @@ unverified.
 | `mldna runs [--last N]` | Table of recent runs for this project (the KEY METRIC column stays `-` until you set `tracking.key_metric: <name>` in `mldna.yaml` — it never guesses which metric you meant) |
 | `mldna doctor` | Independent health checks: tools, auth, git remote, `.gitignore`, large tracked files |
 | `mldna configure aml-auth` / `configure blob-auth` | Store shared-secret credentials for machines without personal Azure AD access |
+| `mldna ui [--port N] [--no-browser]` | Read-only local web view of runs, code and data changes, line history and published versions (needs the `[ui]` extra) |
 
 Python API: `mldna.track_run()` (context manager around training),
 `mldna.track_convert()` (record a converted-format file's provenance against
 its source model).
+
+## Seeing what changed: `mldna ui`
+
+```bash
+pip install "mldna-lineage[ui]"
+mldna ui                     # opens http://127.0.0.1:8765/
+```
+
+A local, read-only page for one producer project:
+
+- **Runs** — the 200 most recent, each with its commit message and badges for
+  whether code or data changed since the run before.
+- **Code changes** — the commits between two runs (the *why*), then a
+  git-style diff. A commit that only moved a `.dvc` pointer is shown as a data
+  change, not a code change.
+- **Line history** — every line of a file with the commit that last changed it
+  and that commit's message; lines changed since the previous run are
+  highlighted.
+- **Data changes** — files and size per dataset before and after, read from the
+  `.dvc` pointers, so the data itself need not be downloaded.
+- **Models** — every published version, who published it, and recalled or
+  abandoned labels.
+
+It never writes anything: GET routes only, a fixed set of read-only git/dvc
+commands, bound to `127.0.0.1`. Commits missing from your clone are reported as
+such, never guessed. Details: [src/mldna/ui/README.md](https://github.com/PranavTyagi-3/mldna/blob/master/src/mldna/ui/README.md).
 
 ## Governance without a promotion ceremony
 

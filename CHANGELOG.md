@@ -14,6 +14,11 @@ consumer pins must use that name (D#58).
 
 ### Added
 
+- `mldna ui` (optional extra: `pip install "mldna-lineage[ui]"`): a read-only
+  local web page of a producer project - recent runs with code/data-changed
+  flags, per-run code diffs with the commits behind them, per-line history,
+  data changes read from the `.dvc` pointers, and published versions. Binds to
+  127.0.0.1, GET routes only, read-only git/dvc commands (D#82).
 - `mldna stage`: runs `dvc add`, stages the files, and lists them for review
   before `mldna push` commits only what is staged (D#68).
 - `mldna id` and `project.model_id`: an immutable per-project id stamped on the

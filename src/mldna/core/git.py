@@ -166,7 +166,9 @@ def push_branch(repo_dir, branch, remote="origin"):
 
 
 def pull_branch(repo_dir, branch, remote="origin"):
-    subprocess.run(["git", "pull", remote, branch], cwd=repo_dir, check=True, capture_output=True, text=True)
+    # Explicit merge: without it, git 2.27+ refuses diverged branches unless
+    # pull.rebase/pull.ff is configured (Git for Windows sets it; Linux git does not).
+    subprocess.run(["git", "pull", "--no-rebase", remote, branch], cwd=repo_dir, check=True, capture_output=True, text=True)
 
 
 class GitWorktreeError(Exception):
