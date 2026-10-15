@@ -1,6 +1,6 @@
 # mldna
 
-<img width="960" height="540" alt="mldna-demo" src="https://github.com/user-attachments/assets/aa557c76-90b7-42eb-81ba-b5060c64b8c6" />
+<img width="1280" height="720" alt="mldna-demo-hd" src="https://github.com/user-attachments/assets/ee66ba5d-d3f8-45bb-a378-aee391c7dc34" />
 
 **A lineage layer for ML teams who refuse to be told how to train.**
 
