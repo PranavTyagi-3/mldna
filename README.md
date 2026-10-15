@@ -1,5 +1,7 @@
 # mldna
 
+<img width="960" height="540" alt="mldna-demo" src="https://github.com/user-attachments/assets/aa557c76-90b7-42eb-81ba-b5060c64b8c6" />
+
 **A lineage layer for ML teams who refuse to be told how to train.**
 
 `mldna` is a thin Python package + CLI that answers one question, mechanically
