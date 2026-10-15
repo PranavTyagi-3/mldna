@@ -1,5 +1,7 @@
 # mldna
 
+<img width="1280" height="720" alt="mldna-demo-hd" src="https://github.com/user-attachments/assets/ee66ba5d-d3f8-45bb-a378-aee391c7dc34" />
+
 **A lineage layer for ML teams who refuse to be told how to train.**
 
 `mldna` is a thin Python package + CLI that answers one question, mechanically
@@ -114,6 +116,22 @@ reconstructed after the fact from logs or memory.
   which walks the full gate sequence and refuses anything that doesn't hold
   up.
 
+## How is this different from MLflow Registry, DVC or W&B?
+
+`mldna` doesn't replace these tools — it sits on top of git, DVC and MLflow and
+adds the part they leave to convention: refusing to publish a model whose
+lineage can't be proven, and giving consumers an exact, reviewed pin.
+
+| | What it does well | What `mldna` adds |
+|---|---|---|
+| **MLflow Model Registry** | Versioned models linked to the runs that logged them, with tags and aliases. `mldna` uses it as its registry. | Gates *before* a version exists: clean git tree at train time, training commit on the remote, data on the DVC remote, and the published file matched to its run by SHA-256. Consumers pin exact versions in a lockfile — no aliases or stages to drift. |
+| **DVC / DVC Studio** | Versioning data alongside git, plus pipelines, experiments and a model view. `mldna` uses DVC for data. | No pipeline definition required — train in any script or notebook. Each published model is tied to the run, commit and per-output data hashes that produced it, with a consumer lockfile, checksum-verified fetch and a recall switch. |
+| **Weights & Biases** | Hosted experiment tracking with artifact versioning and lineage graphs. | Runs entirely on infrastructure you already have (git, blob storage, MLflow). Publishing is a deliberate step that can refuse, and weaker guarantees (dirty runs, runs attached after the fact) stay visibly labeled. |
+
+If your training already runs through a pipeline tool that owns the full
+loop and its lineage, you may not need `mldna`; it's built for teams who train
+freely and want proof anyway.
+
 ## Install
 
 ```bash
@@ -130,6 +148,10 @@ has zero Azure dependencies, and the Azure backend is a strict additive
 layer on top.
 
 ## Quickstart
+
+**Want to try it first?** [`examples/quickstart`](https://github.com/PranavTyagi-3/mldna/tree/master/examples/quickstart)
+trains a scikit-learn model, publishes it and fetches it into a separate app in
+about 5 minutes, entirely on your machine.
 
 ```bash
 # Producer repo (where a model gets trained)
@@ -286,10 +308,7 @@ non-zero exit from `mldna fetch` in CI as a failed deploy.
 
 ## Project status
 
-Actively under construction. The core local-first loop (`init`, `push`,
-`publish`, `fetch`, `runs`, `doctor`) and the Azure ML adapter are both
-implemented and tested end-to-end against real infrastructure. See the
-commit history for the current phase of work.
+Actively under construction
 
 ## License
 
