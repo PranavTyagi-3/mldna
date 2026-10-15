@@ -91,7 +91,9 @@ mldna = "mldna.cli.main:app"
 path = "src/mldna/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = [".claude", "spikes"]
+# examples/ is for people browsing the repo, never part of the package
+# (tests/test_packaging.py guards this).
+exclude = [".claude", "spikes", "examples"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mldna"]
