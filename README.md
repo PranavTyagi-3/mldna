@@ -308,10 +308,7 @@ non-zero exit from `mldna fetch` in CI as a failed deploy.
 
 ## Project status
 
-Actively under construction. The core local-first loop (`init`, `push`,
-`publish`, `fetch`, `runs`, `doctor`) and the Azure ML adapter are both
-implemented and tested end-to-end against real infrastructure. See the
-commit history for the current phase of work.
+Actively under construction
 
 ## License
 
